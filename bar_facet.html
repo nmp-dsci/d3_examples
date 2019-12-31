@@ -1,0 +1,116 @@
+<!doctype html>
+<html>
+  <head>
+      <script src="../resources/d3.4.2.8.min.js" type="text/JavaScript"></script>
+      <style>
+      /* insert CSS */
+      .title {
+        font: 14px sans-serif;
+      }
+      body {
+        font: 12px sans-serif;
+      }
+    </style>
+  </head>
+  <body>
+    <!-- <div id="viz">
+      <svg style="width:600px;height:600px;" ></svg>
+    </div> -->
+    <script>
+      var margin = {top: 20, right: 50, bottom: 70, left: 40};
+      var width = 300 - margin.left - margin.right,
+      height = 200 - margin.top - margin.bottom;
+
+      var yScale = d3.scaleLinear()
+        .range([height, 0 ]);
+      var xScale = d3.scaleBand()
+        .padding([.1])
+        .rangeRound([0,width]);
+
+      var colorScale = d3.scaleOrdinal(d3.schemeCategory10);
+
+      d3.tsv("../data/barley.tsv", ready);
+
+      function ready(error, data){
+        if (error) return consol.warn(error);
+
+        data.forEach(function(d){
+          d.yield = +d.yield
+        });
+
+        var distinctSites = d3.set(data.map(function(d) {return d.site })).values();
+        distinctSites.forEach(function(site) {
+          drawChart(site, data);
+        })
+      }
+
+      function drawChart(siteName, data) { 
+
+        var svg = d3.select("body").append("svg")
+            .attr("width", width + margin.left + margin.right)
+            .attr("height", height + margin.top + margin.bottom)
+          .append("g")
+            .attr("transform", "translate("+margin.left+","+margin.top+")");
+          
+        svg.append("text")
+          .attr("class", "title")
+          .attr("dy", -5)
+          .text(siteName);
+
+        var sampleData = data.filter(function(d) {return d.site == siteName; });
+
+        xScale.domain(d3.set(sampleData.map(function(d) { return d.variety })).values() );
+        yScale.domain([0, d3.max(sampleData, function(d) { return +d.yield; })]).nice();
+
+        var yearScale = d3.scaleBand()
+          .domain(d3.set(sampleData.map(function(d) { return d.year })).values() )
+          .rangeRound([0, xScale.bandwidth() ]);
+
+        // add X/Y axis
+        svg.append("g")
+          .attr("class", "x axis" )
+          .attr("transform", "translate(0, " + height + ")" )
+          .call(d3.axisBottom(xScale)) 
+          .selectAll("text")
+          .attr("transform", "translate(" + yearScale.bandwidth() + " ,0) rotate(45)")
+          .style("text-anchor", "start");
+
+        svg.append("g")
+          .attr("class", "y axis")
+          .call(d3.axisLeft(yScale));
+
+        // Add Bars 
+        var bars = svg.selectAll(".bars")
+          .data(sampleData)
+          .enter().append("rect")
+          .attr("class", "bars")
+          .attr("width", yearScale.bandwidth() )
+          .attr("height", function(d) { return height - yScale(d.yield ); })
+          .attr("x", function(d) { return xScale(d.variety) + yearScale(d.year) ; })
+          .attr("y", function(d) { return yScale(d.yield); })
+          .style("fill", function(d) { return colorScale(d.year) ; });
+
+        // Legend
+        var legend = svg.selectAll(".legend") 
+          .data(colorScale.domain())
+          .enter().append("g")
+            .attr("class", "legend") 
+            .attr("transform", function(d,i) { return "translate("+width+","+i*20 + ")" });
+
+        legend.append("rect")
+          .attr("width", 16)
+          .attr("height", 16)
+          .style("fill", function(d) { return colorScale(d); });
+
+        legend.append("text") 
+          .attr("x", 18)
+          .attr("y", 12)
+          .text(function(d) { return d ; });
+
+
+
+      }
+
+    </script>
+  </body>
+</html>

@@ -1,0 +1,93 @@
+<!doctype html>
+<html>
+  <head>
+      <script src="../resources/d3.4.2.8.min.js" type="text/JavaScript"></script>
+      <style>
+      /* insert CSS */
+      .lines {
+        fill: none;
+      }
+    </style>
+  </head>
+  <body>
+    <!-- <div id="viz">
+      <svg style="width:600px;height:600px;" ></svg>
+    </div> -->
+    <script>
+      // set svg
+      var margin = {top: 20, right: 40, bottom: 30, left: 50};
+      var width = 800 - margin.left - margin.right;
+      var height = 350 - margin.top - margin.bottom;
+
+      // scales
+      var xScale = d3.scalePoint()
+        .rangeRound([0,width]);
+
+      var yScale = d3.scaleLinear()
+        .range([height, 0]);
+
+      var svg = d3.select("body").append("svg")
+        .attr("width", width + margin.left + margin.right)
+        .attr("height", height + margin.top + margin.bottom)
+        .append("g")
+        .attr("transform", "translate("+margin.left+","+margin.top+")");
+
+      var color = d3.scaleOrdinal(d3.schemeCategory20c);
+
+      d3.tsv("../data/barley.tsv", function(error, data) {
+
+        if (error) return console.warn(error);
+
+        data = data.filter(function(d) {return d.site == "Morris" })
+        data.forEach(function(d) {
+          d.yield = +d.yield;
+        })
+
+        yScale.domain([0, d3.max(data, function(d) { return d.yield })])
+        xScale.domain(d3.set(data.map(function(d) { return d.variety })).values())
+
+        svg.append("g")
+          .attr("class", "x axis")
+          .attr("transform", "translate(0, " + height + ")" )
+          .call(d3.axisBottom(xScale));
+        
+        svg.append("g")
+          .attr("class", "y axis")
+          .call(d3.axisLeft(yScale));
+
+        var dots = svg.selectAll(".dots")
+          .data(data)
+          .enter().append("circle")
+          .attr("class", "dots")
+          .attr("r" , 5)
+          .attr("cx", function(d) {return xScale(d.variety) })
+          .attr("cy", function(d) {return yScale(d.yield) })
+          .style("fill", function(d) { return color(d.year) })
+          .on("mouseover", function(a,b,c) {
+            console.log(a)
+          })
+          .on("mouseout", function() {} );
+
+        var nestedData = d3.nest()
+          .key(function(d) { return d.year })
+          .entries(data);
+
+        var lineGenerator = d3.line()
+          .x(function(d) { return xScale(d.variety) })
+          .y(function(d) { return yScale(d.yield) });
+
+        svg.selectAll(".lines")
+          .data(nestedData)
+          .enter().append("path")
+          .attr("class", "lines")
+          .style("stroke", function(d) {return color(d.key) })
+          .attr("d" , function(d) {return lineGenerator(d.values) });
+
+      });
+
+
+
+
+    </script>
+  </body>
+</html>
