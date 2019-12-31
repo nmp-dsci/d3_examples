@@ -16,7 +16,7 @@
 
 ## Examples (html files)
 
-| | name | type | tooltip | heatmap | map | facet | x type | mouseover | select | dropdown |
+| a | name | type | tooltip | heatmap | map | facet | x type | mouseover | select | dropdown |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | 1 | `world_map1` | cloropeth | yes | yes | yes | no | null | yes | no | no |
 | 2 | `line_basic` | line | no | no | no | no | num | no | no | no |
