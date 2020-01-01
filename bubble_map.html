@@ -1,0 +1,115 @@
+<!-- https://www.d3-graph-gallery.com/graph/bubblemap_buttonControl.html -->
+<!doctype html>
+<html>
+  <head>
+      <script src="../resources/d3.4.2.8.min.js" type="text/JavaScript"></script>
+      <script src="../resources/d3-geo-projection.v2.min.js" type="text/JavaScript"></script>
+      <style>
+      /* insert CSS */
+    </style>
+  </head>
+  <body>
+    <!-- button -->
+    <div >
+      <input type="checkbox" class="checkbox" value="A" checked><label>group A</label>
+      <input type="checkbox" class="checkbox" value="B" checked><label>group B</label>
+      <input type="checkbox" class="checkbox" value="C" checked><label>group C</label>
+    </div>
+    <svg id="my_dataviz" width="440" height="300"></svg>
+    <script>
+      var svg = d3.select("svg"),
+        width = +svg.attr("width")
+        height = +svg.attr("height");
+
+      //  map and projection 
+      var projection = d3.geoMercator()
+        .center([2,47]) // GPS of location to zoom in on
+        .scale(1020) // this is like the zoom
+        .translate([width/2,height/2])
+      
+      // create data for circles 
+      var markers = [
+        {long: 9.083, lat: 42.149, group: "A", size: 34}, // corsica
+        {long: 7.26, lat: 43.71, group: "A", size: 14}, // nice
+        {long: 2.349, lat: 48.864, group: "B", size: 87}, // Paris
+        {long: -1.397, lat: 43.664, group: "B", size: 41}, // Hossegor
+        {long: 3.075, lat: 50.640, group: "C", size: 78}, // Lille
+        {long: -3.83, lat: 48, group: "C", size: 12} // Morlaix
+      ];
+
+      // load data and output
+      d3.json("../data/world.geojson", function(data){
+        
+        // filter data 
+        data.features = data.features.filter( function(d) { return d.properties.name == "France"});
+
+        // create a color scale
+        var color = d3.scaleOrdinal()
+          .domain(["A","B","C" ])
+          .range(["#402D54", "#D18975", "#8FD175"]);
+        
+        // add a scale for bubble size
+        var size = d3.scaleLinear()
+          .domain([1,100]) // whats in the data 
+          .range([4,50]) ;  // size in pixel
+
+        // draw the map
+        svg.append("g")
+          .selectAll("path")
+          .data(data.features)
+          .enter()
+          .append("path")
+          .attr("fill", "#b8b8b8")
+          .attr("d", d3.geoPath().projection(projection))
+          .style("stroke","black")
+          .style("opacity", 0.3);
+
+        // add circles 
+        svg 
+          .selectAll("myCircles")
+          .data(markers)
+          .enter()
+          .append("circle")
+            .attr("class", function(d) {return d.group })
+            .attr("cx", function(d) { return projection([d.long, d.lat])[0]})
+            .attr("cy", function(d) { return projection([d.long, d.lat])[1]})
+            .attr("r", function(d) { return size(d.size )})
+            .style("fill", function(d) { return color(d.group )})
+            .attr("stroke", function(d) { return color(d.group) })
+            .attr("stroke-width", 3 )
+            .attr("fill-opacity", 0.4)
+
+        // this function is gonna change the opacity and size of the selected and unselect circles
+        function update() { 
+          // for each check box 
+          d3.selectAll(".checkbox").each(function(d) { 
+            cb = d3.select(this);
+            grp = cb.property("value");
+
+          //  if the box is checked, sow the gorup 
+          if (cb.property("checked")) { 
+            svg.selectAll("."+grp)
+              .transition()
+              .duration(1000) 
+              .style("opacity",1)
+              .attr("r", function(d) { return size(d.size) })
+          } else { 
+            svg.selectAll("."+grp)
+              .transition()
+              .duration(1000)
+              .style("opacity", 0)
+              .attr("r", 0)
+          }
+        })
+        }
+
+        //  when a button change, I run the update function 
+        d3.selectAll(".checkbox").on("change",update);
+
+        // and I initialise it at the begging
+        update();
+      })
+
+    </script>
+  </body>
+</html>

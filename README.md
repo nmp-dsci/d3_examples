@@ -26,7 +26,14 @@
 | 6 | `pie_select` | pie | no | no |  no| no | no | no | yes | no |
 | 7 | `line_multi` | line | no | no | no | no | num | no | yes | no |
 | 8 | `line_dropdown` | line | no |  no| no | no | num | no | no | yes |
-| 8 | `bubble_tooltip` | point | yes | no | no | no | num | yes | no | no |
-| 8 | `line_tooltip` | point | yes | no | no | no | date | no | no | no |
-| 8 | `` |  |  |  |  |  |  |  |  |  |
+| 9 | `bubble_tooltip` | point | yes | no | no | no | num | yes | no | no |
+| 10 | `line_tooltip` | point | yes | no | no | no | date | no | no | no |
+| 11 | `bubble_map` | map | no | no | yes | no | null | no | yes | no |
+| 11 | `line_dropdown2` | line | no | no | no | no | date | no | no | yes |
+| 12 | `correlogram` |  |  |  |  |  |  |  |  |  |
+| 13 | `heatmap` |  |  |  |  |  |  |  |  |  |
+| 14 | `` |  |  |  |  |  |  |  |  |  |
+| 15 | `` |  |  |  |  |  |  |  |  |  |
+| 16 | `` |  |  |  |  |  |  |  |  |  |
+| 17 | `` |  |  |  |  |  |  |  |  |  |
 
