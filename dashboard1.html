@@ -1,0 +1,135 @@
+<!-- https://bl.ocks.org/hdickie/50e1637de68bc14475497e94d07a73a8-->
+<!doctype html>
+<html>
+  <head>
+      <script src="../d3_examples/resources/d3.4.2.8.min.js" type="text/JavaScript"></script>
+      <script src="../d3_examples/resources/d3-scale-chromatic.v1.min.js" type="text/JavaScript"></script>
+      <style>
+      /* insert CSS */
+      body {margin:0;position:fixed;top:0;right:0;bottom:0;left:0;}
+      .active {
+        stroke: aqua !important;
+        stroke-width: 1px !important;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="viz">
+      <svg height="500" width="960" id="dashboard" style="position:absolute;"></svg>
+    </div>
+    <script>
+
+      var svg = d3.select("#dashboard"),
+        margin = {top:35, right:20,bottom:20, left:20},
+        width = svg.attr("width") - margin.left - margin.right, 
+        height = svg.attr("height") - margin.top - margin.bottom, 
+
+        g = svg.append("g")
+          .attr("transform", "translate("+margin.left+","+margin.top+")");
+
+        // 3 vars. b1 is height of p2, b2 is width of p1, b3 is height
+        var b1 = 260, b2 = width/2, b3 = 66; 
+        var pad =5;
+        var p4_x = width, p4_y=b3,p4_dx=0,p4_dy=height-p4_y;
+
+        var p1_dx=0,p1_dy=0,p1_x =b2, p1_y = height - p4_y;
+        var p2_dx = p1_x, p2_dy = 0, p2_x = width - p1_x, p2_y = b1;
+        var p3_dx = p1_x, p3_dy = p2_y, p3_x = width - p1_x , p3_y = height - p2_y - p4_y;
+
+        var c1 = "none", c2 = "none", c3 = "none", c4 = "none";
+
+        // generate the rects
+        g.append("rect" )
+          .attr("width", p1_x)
+          .attr("height", p1_y)
+          .attr("fill", c1);
+
+        g.append("rect")
+          .attr("width", p2_x)
+          .attr("height", p2_y)
+          .attr("x", p2_dx)
+          .attr("y", p2_dy)
+          .attr("fill", c2);
+
+        g.append("rect")
+          .attr("width", p3_x)
+          .attr("height", p3_y)
+          .attr("x", p3_dx)
+          .attr("y", p3_dy)
+          .attr("fill", c3);
+
+        g.append("rect")
+          .attr("width", p4_x)
+          .attr("height", p4_y)
+          .attr("x", p4_dx)
+          .attr("y", p4_dy)
+          .attr("fill", c4) ;
+
+        var p2 = g.append("g").attr("transform", "translate("+p1_x+","+0+")");
+        var p3 = g.append("g").attr("transform", "translate("+p1_x+","+p2_y+")");
+        var p4 = g.append("g").attr("transform", "translate("+0+","+p1_y+")");
+
+        // signature
+        svg.append("text")
+          .attr("x", width-90)
+          .attr("y", 10)
+          .attr("font-family", "Georgia")
+          .style("font-size", 7 )
+          .style("fill", "white")
+          .text("Hi Nathan");
+
+        function drawBarChart(svg) { 
+          var possibleResponses = ["Strongly Disagree","Disagree","Neither","Agree","Strongly Agree"];
+          var responses = d3.scaleBand()
+            .domain(possibleResponses)
+            .rangeRound([0,p1_x-30-pad])
+            .paddingInner(0.1)
+            .paddingOuter(0.05);
+
+          var barScale = d3.scaleLinear()
+            .domain([0,359])
+            .rangeRound([p1_y-15-2*pad,0])
+            .nice();
+
+          g.append("g")
+            .attr("class", "axis axis--y")
+            .attr("transform", "translate(30,5)")
+            .call(d3.axisLeft(barScale));
+
+          g.append("g")
+            .attr("class", "gridlines y-gridlines")
+            .attr("transform", "translate(30,5)")
+            .style("opacity", 0.3)
+            .call(d3.axisRight(barScale)
+              .ticks(7)
+              .tickSize(p1_x -30)
+              .tickSizeOuter(0)
+              .tickFormat("")
+            );
+
+          var t1_xoff = 55 , t1_yoff = -15;
+
+          g.append("text")
+            .attr("x", t1_xoff)
+            .attr("y", t1_yoff)
+            .attr("font-family","Georgia")
+            .text("I'd rather trust my own judgement than the");
+
+          g.append("text")
+            .attr("x", t1_xoff + 91)
+            .attr("y", t1_yoff + 18 )
+            .attr("font-family", "Georgia")
+            .text("opinion of experts");
+
+          d3.csv()
+
+
+
+
+        }
+
+
+
+    </script>
+  </body>
+</html>
