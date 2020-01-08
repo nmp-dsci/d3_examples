@@ -1,0 +1,359 @@
+<!-- https://bl.ocks.org/brunob/e19581e8c2f37f861a9555616b52194a -->
+<!-- more advance filtering: http://bl.ocks.org/HarryStevens/69da410602d8ca6b9f41f72024dba791 -->
+
+<!doctype html>
+<html>
+  <head>
+      <title>NSW Postcode Map</title>
+      <script src="../d3_examples/resources/d3.4.2.8.min.js" type="text/JavaScript"></script>
+      <script src="../d3_examples/resources/jquery.3.2.1.min.js" type="text/JavaScript"></script>
+      <script src="../d3_examples/resources/chromas.1.3.4.js" type="text/JavaScript"></script>
+
+      <script type="text/javascript" src="../d3_examples/js/color_map.json"></script>
+      <!-- <script src="../d3_examples/resources/leaflet.1.6.0.js" type="text/JavaScript"></script> -->
+      <style>
+      /* insert CSS */
+      .postcode { 
+        cursor: pointer;
+        stroke: black;
+        stroke-width: .5px;
+        fill: grey;
+      }
+      .postcode:hover {
+        stroke: #555;
+        stroke-width: 2px;
+      }
+      div.tooltip {
+        position: absolute;
+        opacity:0.8;
+        z-index:1000;
+        text-align:left;
+        border-radius:4px;
+        padding:8px;
+        color:#fff;
+        background-color:#000;
+        font: 12px sans-serif;
+        max-width: 300px;
+      }
+      #svg {
+        display: block;
+        margin: auto;
+      }
+
+    </style>
+  </head>
+  <body>
+      <div id="select">
+        <select id="column"></select>
+        <select id="breaks"></select>
+        <select id="count"></select>
+        <select id="colors"></select>
+      </div>
+
+      <div id="legend"></div>
+      <div id="map"></div>
+      <div id="controls"></div>
+
+    <script>
+
+      // 
+      var width_b = 1100, 
+        height_b = 900, 
+        legend_w = width_b *1 ,
+        legend_h = 22
+        legendbar_h= 10;
+      
+      // INITIALISE SVG 
+      var svg_map = d3.select("#map")
+        .append("svg")
+        .attr("width", width_b)
+        .attr("height", height_b) 
+        .attr("class","geom");
+
+      var svg_legend = d3.select("#legend")
+        .append("svg")
+        .attr("width", legend_w)
+        .attr("height",legend_h);
+        
+      var legendX = d3.scaleLinear()
+			  .range([0, legend_w]);
+
+      var t = d3.transition()
+        .duration(750);
+      
+      //  SET THE DROP DOWNS
+      //  1. Respones you can use
+      var poa_reponses = [
+        {name:"Mean Sale Price",column:"sales"},
+        {name:"Properties Sold",column:"volume"}
+      ];
+      poa_reponses.forEach(function(d){
+        $("#select #column").append("<option value='"+ d.column+"'>"+d.name+"</option>")
+      });
+      $("#select #column").val("sales");
+
+      // 2. clustering function 
+			var breaks = [
+			  {type: "Equidistant",value: "e"},
+			  {type: "Quantile",value: "q"},
+			  {type: "Logarithmic",value: "l"},
+			  {type: "K-means",value: "k"}
+			];
+			breaks.forEach(function(d){
+			  $("#select #breaks").append("<option value='" + d.value + "'>" + d.type + "</option>");
+      });
+      $("#select #breaks").val("q");
+
+      // 3. splits in color mapping
+      [3,4,5,6,7,8].forEach(function(d){
+			  $("#select #count").append("<option value='" + d + "'>" + d + "</option>");
+      });
+      $("#select #count").val(4);
+
+      // 4. colour sequence to use
+      Object.keys(colors).forEach(function(d){
+			  $("#select #colors").append("<option value='" + d + "'>" + d + "</option>");
+      });
+    
+      // push data into function
+      d3.queue()
+        .defer(d3.json , "../d3_examples/data/POA_2016_NSW_reduced.geojson")
+        .defer(d3.csv, "../d3_examples/data/property_poa.csv")
+        .await(drawMaps);
+
+      function drawMaps(error, map_json,poa_summ) {
+
+        if (error) throw error;
+
+        // STEP 1: prepare aggregate CSV for heatmap
+        var poa_lvl = d3.nest()
+          .key(d=>d.postcode)
+          .rollup(function(d) {
+            return {
+              sales:d3.sum(d, n=> n.sales) / d3.sum(d, de => de.volume),
+              volume:d3.sum(d, de => de.volume)
+            }
+          })
+          .entries(poa_summ);
+        
+        // STEP 2: DRAW Map
+        var projection = d3
+        .geoMercator() 
+        .scale(30000)	  // zoom in 
+        .center([150.0, -33.5]); // where to center SVG on  
+
+        var path = d3.geoPath().projection(projection);
+        
+        svg_map
+          // .append("g")
+          .selectAll("path")
+          .data(map_json.features)
+          .enter()
+          .append("path")
+          .attr("class", "postcode")
+          .attr("id", d => "poa" + d.properties.POA_CODE16)
+          .attr("d", path);
+
+        //  Initialise Legend Scale and drawLegend AND CHANGE listener!!
+        var buckets = colorSubUnits(poa_lvl, $("#select #breaks").val(), $("#select #count").val(), $("#select #colors").val(), $("#select #column").val());
+        console.log(buckets);
+        drawLegend(buckets, $("#select #colors").val());
+        // listener
+        $("#select select").change(function(){
+			    buckets = colorSubUnits(poa_lvl, $("#select #breaks").val(), $("#select #count").val(), $("#select #colors").val(), $("#select #column").val());
+			    drawLegend(buckets, $("#select #colors").val());
+        });
+
+        // Tooltip and color shape
+        poa_lvl.forEach(function(e){
+          // text in tool tip (HTML)
+          var tooltip = "<b> Postcode: </b> " + e.key +"<br>" +
+          "<b> Sale Price: </b>" +Math.round(e.value.sales,0)+"<br>" +
+          "<b> Properties: </b>" +Math.round(e.value.volume,0)+"<br>" ;
+          // 
+          // console.log();
+          // 
+          d3.select("#poa"+e.key)
+            // .attr("class", "postcode q"+quantile(Math.sqrt(+e.value.sales))+"-9")
+            .on("mouseover", function(d) { 
+              div.transition()
+                .duration(200)
+                .style("opacity", 0.9);
+              div.html(tooltip)
+                .style("left",(d3.event.pageX + 30) + "px")
+                .style("top", (d3.event.pageY - 30) + "px")
+            })
+            .on("mouseout", function(d) { 
+              div.transition()
+                .duration(500)
+                .style("opacity", 0);
+              div.html("")
+                .style("left" , "0px")
+                .style("top", "0px")
+            });
+
+        });
+
+        // append a DIV for the tooltip
+        var div = d3.select("#map")
+          .append("div")
+          .attr("class", "tooltip");
+          // style("opacity", 0);
+
+        // Zoom functionality
+        var mapZoom = d3.zoom()
+          .on("zoom", zoomed);
+
+        var zoomSettings = d3.zoomIdentity
+          .translate(250, 250)
+          .scale(30000);
+
+        function zoomed() {
+          var e = d3.event
+          projection.translate([e.transform.x, e.transform.y])
+            .scale(e.transform.k);
+          d3.selectAll("path.postcode").attr("d", path);
+        }
+
+        svg_map.call(mapZoom).call(mapZoom.transform, zoomSettings);
+
+        // zoom in button
+        function zoomButton(zoomDirection) {
+          var width = 500;
+          var height = 500;
+          if (zoomDirection == "in") {
+            var newZoom = projection.scale() * 1.5;
+            var newX = ((projection.translate()[0] - (width / 2)) * 1.5) + width / 2;
+            var newY = ((projection.translate()[1] - (height / 2)) * 1.5) + height / 2;
+          }
+          else if (zoomDirection == "out") {
+            var newZoom = projection.scale() * .75;
+            var newX = ((projection.translate()[0] - (width / 2)) * .75) + width / 2;
+            var newY = ((projection.translate()[1] - (height / 2)) * .75) + height / 2;
+          }
+
+          var newZoomSettings = d3.zoomIdentity
+            .translate(newX, newY)
+            .scale(newZoom);
+
+          d3.select("svg").transition().duration(500).call(mapZoom.transform, newZoomSettings);
+
+        }
+        
+        d3.select("#controls").append("button")
+            .on("click", () => { zoomButton("in")}).html("Zoom In");
+
+        d3.select("#controls").append("button")
+            .on("click", () => { zoomButton("out")}).html("Zoom Out");
+
+      }; // end draw Maps
+
+			function drawLegend(buckets, colorScheme){
+
+        // update legendX domain
+        legendX.domain([buckets[0].x, buckets[buckets.length - 1].x + buckets[buckets.length - 1].width]);
+
+        // JOIN
+        var legendRect = svg_legend.selectAll(".legend-rect")
+          .data(buckets, function(d){ return d.bucket; });
+
+        var legendNumber = svg_legend.selectAll(".legend-number")
+          .data(buckets, function(d){ return d.bucket; });
+
+        var legendMax = svg_legend.selectAll(".legend-max")
+          .data([buckets[buckets.length - 1].x + buckets[buckets.length - 1].width]);
+
+        // EXIT
+        legendRect.exit()
+          .transition(t)
+            .attr("opacity", 1e-6)
+            .remove();
+
+        legendNumber.exit()
+          .transition(t)
+            .attr("opacity", 1e-6)
+            .remove();
+
+        // UPDATE
+        legendRect
+          .transition(t)
+            .attr("width", function(d){ return legendX(d.x + d.width); })
+            .attr("x", function(d){ return legendX(d.x); })
+            .attr("fill", function(d){ return d.color });
+
+        legendNumber
+          .transition(t)
+            .attr("x", function(d){ return legendX(d.x); })
+            .text(function(d){ return (d.x/1000).toFixed(0)+'k'; });
+
+        legendMax
+            .attr("x", function(d){ return legendX(d); })
+            .text(function(d){ return (d/1000).toFixed(0)+'k'; })
+
+        // ENTER
+        legendRect.enter().append("rect")
+            .attr("class", "legend-rect")
+            .attr("y", 0)
+            .attr("height", legendbar_h)
+            .attr("x", function(d){ return legendX(d.x); })
+            .attr("fill", function(d){ return d.color })
+            .attr("width", function(d){ return legendX(d.x + d.width); });
+
+        legendNumber.enter().append("text")
+            .attr("class", "legend-number")
+            .attr("y", legend_h)
+            .attr("x", function(d){ return legendX(d.x); })
+            .text(function(d){ return (d.x/1000).toFixed(0)+'k'; });
+            
+        legendMax.enter().append("text")
+            .attr("class", "legend-max")
+            .attr("y", legend_h)
+            .attr("x", function(d){ return legendX(d); })
+            .style("text-anchor", "end")
+            .text(function(d){ return (d/1000).toFixed(0) +'k'; });
+
+      }
+
+
+			function colorSubUnits(data, breakType, breakCount, colorScheme, value){
+
+        var nums = data.filter(d => !isNaN(+d['value'][value])).map(d => +d['value'][value] );
+        var buckets = chroma.limits(nums, breakType, breakCount);
+        console.log(buckets);
+
+        data.forEach(function(e){
+          d3.select("#poa"+e.key)
+            .transition(t)
+			      .style("fill", function(d){
+              var bucketNumber = d3.min(buckets.map(function(bucket, i){
+                if (e['value'][value] <= bucket){
+                  return i;
+                }
+              }));
+              // console.log(bucketNumber);
+              return colors[colorScheme][breakCount][bucketNumber - 1];
+            });
+        });
+            // .attr("class", "postcode q"+quantile(Math.sqrt(+e.value.sales))+"-9")
+
+			  // an array to return for drawing the legend
+			  var arr = [];
+			  buckets.forEach(function(d, i){
+
+			    if (i != 0){
+			      var obj = {};
+			      obj.bucket = i;
+			      obj.x = buckets[i - 1];
+			      obj.width = d - obj.x;
+			      obj.color = colors[colorScheme][breakCount][i - 1];
+			      arr.push(obj);
+			    }
+			    
+			  });
+			  return arr;
+			} // end ColorSubUnits
+
+
+    </script>
+  </body>
+</html>
