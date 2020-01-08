@@ -32,7 +32,8 @@ df.parking = df.parking.apply(lambda x: 3 if x > 3 else  0 if x < 0 else x  )
 ###  postcode summ 
 baseID = ['postcode']
 aggID = ['baths','beds','parking','propertyType']
-poa_summ = df.groupby(baseID+aggID
+poa_summ = df.query('sale_price==sale_price'
+    ).groupby(baseID+aggID
     ).agg({'sale_price':[np.size,np.sum]})
 poa_summ.columns = ['volume','sales']
 poa_summ = poa_summ.reset_index()
@@ -48,6 +49,17 @@ overall = poa_summ.groupby(aggID)[['volume','sales']].sum().reset_index()
 overall['postcode'] = 9999
 
 poa_summ = pd.concat([poa_summ,overall],axis=0)
+
+## left join back to postcode
+poa_master = pd.read_csv("mesh2poa.csv")
+poa_master = poa_master.query('POA_CODE_2016 >=2000 and POA_CODE_2016 <= 2999')
+
+poa_master = poa_master.groupby('POA_CODE_2016').AREA_ALBERS_SQKM.sum().reset_index()
+poa_master = poa_master.rename(columns={'POA_CODE_2016':'postcode',"AREA_ALBERS_SQKM":"sqkm"})
+
+poa_summ = poa_master.merge(poa_summ, on='postcode',how='left')
+
+poa_summ.query('sales != sales')
 
 poa_summ.to_csv("property_poa.csv")
 
