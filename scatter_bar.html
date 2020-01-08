@@ -1,0 +1,302 @@
+<!-- https://bl.ocks.org/jwang1616/7a972b0d5e50311032c54c6cf8c6cd95 -->
+
+<!doctype html>
+<html>
+  <head>
+      <script src="../d3_examples/resources/d3.4.2.8.min.js" type="text/JavaScript"></script>
+      <style>
+      /* insert CSS */
+      body {margin:0;position:fixed;top:0,right:0;bottom:0;left:0;}
+      div.tooltip {
+        position: absolute;
+        text-align: center;
+        width: 60px;
+        height: 28px;
+        padding: 2px;
+        font: 12px sans-serif;
+        border: 0px;
+        border-radius: 8px;
+        pointer-events: none;
+      }
+    
+    </style>
+  </head>
+  <body>
+    <div id="drop1" align=left>
+        <b> Select the predictor variable x: </b>
+    </div>
+    <div id="drop2" align=left>
+        <b>Select the response variable y: </b>
+    </div>
+    <script>
+        var margin = {top:100,right:80,bottom:100,left:80},
+            width_b= 480, 
+            height_b = 500,
+            width = width_b - margin.left - margin.right,
+            height = height_b - margin.top - margin.bottom;
+
+        var x_sca = d3.scaleLinear().range([0,width]),
+            y_sca = d3.scaleLinear().range([height, 0]),
+            x_bar = d3.scaleBand().range([0,width]).padding(0.1),
+            y_bar = d3.scaleLinear().range([height,0]);
+
+        var sca = d3.select("body")
+            .append("svg")
+            .attr("width", width + margin.left + margin.right)
+            .attr("height", height+ margin.top + margin.bottom) 
+            .append("g")
+            .attr("transform","translate("+margin.left+","+margin.top+")");
+
+        var bar = d3.select("body")
+            .append("svg")
+            .attr("width", width + margin.left + margin.right)
+            .attr("height",height + margin.top + margin.bottom)
+            .append("g") 
+            .attr("transform", "translate("+margin.left+","+margin.top+")");
+
+        var div = d3.select("body")
+            .append("div")
+            .attr("class", "tooltip")
+            .style("opacity", 0);
+
+        // apply data
+        d3.csv("../d3_examples/data/facebook.csv",drawData);
+
+        function drawData(data){
+            // scatterplot
+
+            // 1. select columns that are features
+            var features = d3.keys(data[0])
+                .filter(d => (d!="Type") & (d != "Category"));
+            // 2. default selections
+            var xselection = features[0],
+                yselection = features[0];
+            // 3. generate axis
+            x_sca.domain(d3.extent(data, d => +d[xselection] ));
+            y_sca.domain(d3.extent(data, d => +d[yselection] ));
+
+            var scakey = d => d.Type;
+            var scacolor = d3.scaleOrdinal(d3.schemeCategory10);
+
+            // X axis
+            sca.append("g")
+                .attr("class", "x axis") 
+                .attr("transform", "translate(0," + height + ")")
+                .call(d3.axisBottom(x_sca))
+                .selectAll("text")
+                .style("text-anchor","start")
+                .attr("dy", "1em")
+                .attr("transform", "rotate(45)");
+
+            sca.append("text")// X label
+                .attr("x", width)
+                .attr("y", height-5)
+                .style("text-anchor", "start")
+                .text("Units")
+                .style("font-size", "12px");
+
+            // Y Axis
+            sca.append("g")
+                .attr("class", "y axis")
+                .call(d3.axisLeft(y_sca));
+
+            sca.append("text") // Y label
+                .attr("dy", "-1em")
+                .style("text-anchor", "end")
+                .text("Units")
+                .style("font-size", "12px");
+                
+            // draw scatter plot
+            sca.selectAll("dot")
+                .data(data)
+                .enter()
+                .append("circle")
+                .attr("r", 3.5)
+                .attr("cx", d => x_sca(+d[xselection] ))
+                .attr("cy", d => y_sca(+d[yselection] ))
+                .style("fill", d => scacolor(scakey(d)) );
+
+            // Initialse LEGEND
+            var legend = sca.selectAll(".legend")
+                .data(scacolor.domain().sort())
+                .enter()
+                .append("g")
+                .attr("class", "legend");
+
+            // put in colors
+            legend.append("rect")
+                .attr("x", function(d,i) { return 80 + i * 100; })
+                .attr("y", -70)
+                .attr("width", 18 )
+                .attr("height" , 18) 
+                .style("fill", scacolor);
+
+            legend.append("rect")
+                .attr("x", function(d,i) { return 10 + i * 100; })
+                .attr("y", -72)
+                .attr("width", 90)
+                .attr("height" , 22) 
+                .style("stroke", "black")
+                .style("fill","none")
+            
+            // put the labels in for the legend
+            legend.append("text")
+                .attr("x", function(d,i) { return 70 + i * 100 ; })
+                .attr("y", -60)
+                .attr("dy", ".35em")
+                .style("text-anchor", "end")
+                .text(d => "Type: " + d  )
+                .style("font-size" , "12px")
+
+            // bar chart
+            var transdata = d3.nest()
+                .key(d => d.PostWeekday) 
+                .rollup(function(d) {
+                    return d3.mean(d, g=> g.TotalInteractions );
+                })
+                .entries(data);
+
+            var barcolor = d3.scaleOrdinal(d3.schemeCategory10);
+
+            x_bar.domain(transdata.map(d => d.key));
+            y_bar.domain([0, d3.max(transdata, d=> +d.value )]);
+
+            bar.selectAll(".bar")
+                .data(transdata)
+                .enter()
+                .append("rect")
+                .attr("class", "bar")
+                .attr("x", d => x_bar(d.key))
+                .attr("width", x_bar.bandwidth())
+                .attr("y", d => y_bar(+d.value) )
+                .attr("height",  d => height - y_bar(+d.value)) 
+                .attr("fill", function(d,i){return barcolor(i); } )
+                .attr("id", function(d,i) { return i; })
+                .on("mouseover", function(d){ 
+                    d3.select(this).attr("fill", "#ffff00");
+                    div.transition().duration(200).style("opacity", 0.9);
+                    div.html("average interactions: " + "<br/>"+d3.format(".2f")(d.value))
+                        .style("left", (d3.event.pageX) + "px")
+                        .style("top", (d3.event.pageY) + "px" );
+                })
+                .on("mouseout", function(d) { 
+                    d3.select(this).attr("fill",d=> barcolor(this.id) );
+                    div.transition().duration(200).style("opacity", 0);
+                });
+
+            bar.append("g")
+                .attr("class", "x axis")
+                .attr("transform", "translate(0,"+height + ")")
+                .call(d3.axisBottom(x_bar))
+                .selectAll("text")
+                .attr("transform", "rotate(0)")
+                .style("text-anchor", "start");
+
+            bar.append("g")
+                .attr("class", "y axis")
+                .call(d3.axisLeft(y_bar));
+
+            bar.append("text")
+                .attr("dy", "-1em")
+                .style("text-anchor", "end")
+                .text("Units")
+                .style("font-size", "12px");
+
+            // Two dropdown menus
+            // DROP DOWN 1
+            var xselector = d3.select("#drop1")
+                .append("select")
+                .attr("id", "dropdown")
+                .on("change", function() { 
+                    xselection = this.value;
+                    x_sca.domain(d3.extent(data, d => +d[xselection] ));
+                    sca.select("g.x.axis")
+                        .transition()
+                        .call(d3.axisBottom(x_sca))
+                        .selectAll("text")
+                        .style("text-anchor", "start")
+                        .attr("dy", "1em")
+                        .attr("transform", "rotate(45)");
+                    
+                    sca.selectAll("circle")
+                        .data(data)
+                        .transition()
+                        .attr("cx", d => x_sca(+d[xselection] ))
+                });
+
+            xselector.selectAll("option")
+                .data(features)
+                .enter()
+                .append("option")
+                .attr("value", d => d )
+                .text(d => d );
+
+            // DROP DOWN 2
+            var yselector = d3.select("#drop2")
+                .append("select")
+                .attr("id", "dropdown")
+                .on("change", function(){
+                    yselection = this.value;
+                    y_sca.domain(d3.extent(data, d => +d[yselection] ));
+                // 
+                sca.select("g.y.axis")
+                    .transition()
+                    .call(d3.axisLeft(y_sca));
+                // 
+                sca.selectAll("circle")
+                    .data(data)
+                    .transition()
+                    .attr("cy",d => y_sca(+d[yselection]) )
+                });
+
+            yselector.selectAll("option")
+               .data(features)
+               .enter()
+               .append("option")
+               .attr("value", d => d)
+               .text(d => d);
+
+            // Brush selection
+            var brush = d3.brush()
+                .extent([[0,0], [width,height]])
+                .on("brush", brushed);
+
+            sca.append("g")
+                .attr("class", "brush")
+                .call(brush);
+
+            function brushed() {
+                var chosen = d3.brushSelection(this);
+                var newdata = data.filter(function(d){
+                    return chosen[0][0] <= x_sca(+d[xselection]) && 
+                        x_sca(+d[xselection]) <= chosen[1][0] &&
+                        chosen[0][1] <= y_sca(+d[yselection]) && 
+                        y_sca(+d[yselection]) <= chosen[1][1];
+                });
+
+                if (newdata.length != 0){
+                    transdata = d3.nest()
+                        .key(d => d.PostWeekday)
+                        .rollup(function(d) { 
+                            return d3.mean(d, g=> g.TotalInteractions);
+                        })
+                        .entries(newdata);
+
+                    y_bar.domain([0, d3.max(transdata, d => d.value )]);
+
+                    bar.select("g.y.axis")
+                        .transition()
+                        .call(d3.axisLeft(y_bar));
+
+                    bar.selectAll("rect")
+                        .data(transdata)
+                        .transition()
+                        .attr("y", d => y_bar(+d.value))
+                        .attr("height", d => height - y_bar(+d.value) )
+                }
+            }
+        }
+
+    </script>
+  </body>
+</html>
