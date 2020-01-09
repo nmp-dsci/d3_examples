@@ -12,6 +12,10 @@
       <script type="text/javascript" src="../d3_examples/js/color_map.json"></script>
       <!-- <script src="../d3_examples/resources/leaflet.1.6.0.js" type="text/JavaScript"></script> -->
       <style>
+      body {
+          /* width: 1000px; */
+          margin: 10px auto;
+      }
       /* insert CSS */
       .postcode { 
         cursor: pointer;
@@ -22,6 +26,9 @@
       .postcode:hover {
         stroke: #555;
         stroke-width: 2px;
+      }
+      div {
+        padding-right: 30px;
       }
       div.tooltip {
         position: absolute;
@@ -38,6 +45,9 @@
       #svg {
         display: block;
         margin: auto;
+      }
+      .legend-number { 
+        font-size: 14px;
       }
 
     </style>
@@ -102,18 +112,19 @@
 			breaks.forEach(function(d){
 			  $("#select #breaks").append("<option value='" + d.value + "'>" + d.type + "</option>");
       });
-      $("#select #breaks").val("q");
+      $("#select #breaks").val("k");
 
       // 3. splits in color mapping
       [3,4,5,6,7,8].forEach(function(d){
 			  $("#select #count").append("<option value='" + d + "'>" + d + "</option>");
       });
-      $("#select #count").val(4);
+      $("#select #count").val(8);
 
       // 4. colour sequence to use
       Object.keys(colors).forEach(function(d){
 			  $("#select #colors").append("<option value='" + d + "'>" + d + "</option>");
       });
+      $("#select #colors").val("YlOrRd")
     
       // push data into function
       d3.queue()
