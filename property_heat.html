@@ -168,8 +168,8 @@
         poa_lvl.forEach(function(e){
           // text in tool tip (HTML)
           var tooltip = "<b> Postcode: </b> " + e.key +"<br>" +
-          "<b> Sale Price: </b>" +Math.round(e.value.sales,0)+"<br>" +
-          "<b> Properties: </b>" +Math.round(e.value.volume,0)+"<br>" ;
+          "<b> Sale Price: </b> $" +d3.format(",")(Math.round(e.value.sales,0))   +"<br>" +
+          "<b> Properties: </b>" +d3.format(",")(Math.round(e.value.volume,0))   +"<br>" ;
           // 
           // console.log();
           // 
