@@ -10,6 +10,30 @@
           width: 1000px;
           margin: 10px auto;
       }
+      .bar1 rect:hover {fill:blue;}
+      .bar2 rect:hover {opacity: 0.9}
+
+      .chart .legend {
+          fill: black;
+          font: 18px sans-serif;
+          text-anchor: start;
+          font-size: 18px;
+      }
+
+      /*  legend formating */
+      /* .x.axis path { display: none; }  */
+      .axis path,
+      .axis line {
+          fill: none;
+          stroke: #000;
+          shape-rendering: crispEdges;
+      }
+      .x.axis {
+          font-size: 14px;
+      }
+      
+
+
     </style>
   </head>
   <body>
@@ -77,7 +101,7 @@
 
                 // create the frequency labels above the rectangles
                 bars.append("text")
-                    .text(d => "$"+d3.format(",.0f")(Math.round(d[1]/1000000,2))+"m")
+                    .text(d => d3.format("$,.0f")(Math.round(d[1]/1000000,2))+"m")
                     .attr("x", d => x(d[0]) + x.bandwidth() / 2  )
                     .attr("y", d => y(d[1]) + -5 )
                     .attr("text-anchor", "middle")
@@ -116,7 +140,7 @@
                     // transition the frequency labels location and change value
                     bars.select("text")
                         .transition().duration(500)
-                        .text(d => "$"+d3.format(",.0f")(Math.round(d[1]/1000000,2))+"m")
+                        .text(d => d3.format("$,.0f")(Math.round(d[1]/1000000,2))+"m")
                         .attr("y", d => y(d[1]) -5  );
 
                 } // end updated function
@@ -173,6 +197,7 @@
                     .attr("width", x.bandwidth() )
                     .attr("height", d => hGDim.h - y(d.freq)  )
                     .attr("fill", d => segColor(d.type) )
+                    .style("opacity", 0.5)
                     .on("mouseover", mouseover) 
                     .on("mouseout", mouseout);
 
@@ -264,7 +289,7 @@
                         .selectAll("tr")
                         .data(nD);
                     // update the frequencies
-                    l.select(".legendFreq").text(d => d3.format(",")(d.freq ));
+                    l.select(".legendFreq").text(d => d3.format("$,")(d.freq ));
                     l.select(".legendPerc").text(d => getLegend(d,nD))
                 }
 
