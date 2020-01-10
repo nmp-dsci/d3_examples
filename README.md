@@ -2,7 +2,7 @@
 
 
 ## steps to use server (terminal)
-1. go to directory: `cd /Users/macmac/Documents/GitHub/d3js_eg/example`
+1. go to directory: over repo
 2. start server: `python -m http.server 4000`
 
 

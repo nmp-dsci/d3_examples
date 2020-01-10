@@ -1,6 +1,7 @@
 <!-- https://bl.ocks.org/brunob/e19581e8c2f37f861a9555616b52194a -->
 <!-- more advance filtering: http://bl.ocks.org/HarryStevens/69da410602d8ca6b9f41f72024dba791 -->
 <!-- pie chart: https://blockbuilder.org/ZijunXu/2c9d8a8db6420799ed944187100f8aee -->
+<!-- example of update: https://bl.ocks.org/roberto-slopez/05dc72ff1a4013e2720cdda6ceeeab88 -->
 
 <!doctype html>
 <html>
@@ -205,7 +206,6 @@
             var colorScale = d3.scaleOrdinal(d3.schemeCategory10)
               .domain(xValuesRaw);
             attrCols[i]['colorScale'] = colorScale
-            console.log(colorScale(xValues[0]))
           }; // end loop through filter for x 
         }); // end loop through column name
 
@@ -247,13 +247,10 @@
           }
         });
 
-        updatePie(poa_df.filter(d => d.year =="2017") , attrCols[3]);
-        
-
 
         // SELECT ACTION on CHANGE
         $("select").change(function(){
-          console.log("CHANGE in Selection")
+          // console.log("CHANGE in Selection")
           // Generate Dat to visualise
           selectDF = poa_df;
 
@@ -264,12 +261,9 @@
                 column: d.column,
                 value: $("#attribute #"+d.column).val()
               }
-              console.log(aaa)
               // Apply filter if not all
               if (aaa.value != aaa.name+"_"+defaultX+" "+aaa.name){
-                console.log("Apply filter")
                 filterX = aaa.value.replace(aaa.name+"_","")
-                console.log(filterX)
                 selectDF = selectDF.filter(r => r[d.column] == filterX)
                 // data.filter(d => !isNaN(+d['value'][value])).map(d => +d['value'][value] ); 
               }
@@ -281,7 +275,15 @@
 			    buckets = colorSubUnits(poa_lvl, $("#response #breaks").val(), $("#response #count").val(), $("#response #colors").val(), $("#response #column").val());
           drawLegend(buckets, $("#response #colors").val());
           drawTooltip(poa_lvl,div);
-        });
+
+          // Update dashboar
+          attrCols.forEach(function(attr){
+            if (attr.class =="x"){
+              updatePie(selectDF , attr)
+            }
+          });
+
+        }); // End update on change of selection
 
         // -------------------------------------------------------
         // Zoom functionality
@@ -353,7 +355,7 @@
           .append("svg")
           .attr("width", pie_w)
           .attr("height",pie_h+pieLegend_h )
-          .attr("id", xAttr.column)
+          .attr("id","pie_" + xAttr.column)
 
         // Add title
         pie_svg
@@ -392,10 +394,8 @@
           .attr("class", "slice path path--background")
           .attr("d", arc)
           .style("fill",function(d) {
-            console.log(d)
-            console.log(xAttr.colorScale(d.data.key))
             return xAttr.colorScale(d.data.key)
-          } )
+          })
       } // end drawPie
 
       // -------------------------------------------------------
@@ -403,16 +403,54 @@
 
         aggDF = summFunc(data, xAttr.column);
         var total = d3.sum(aggDF, d => d.value.volume);
+
+        // ADD POA driver pies
+        var  pie_w  = 250, 
+          pie_h  = 250,
+          pieLegend_h = 100,
+          outerRadius = 100,
+          innerRadius = outerRadius - 30,
+          radius = outerRadius + 25;
+
+        // default: Pie
+        var pie = d3.pie()
+          .sort(null)
+          .value(d => (d.value.volume/total)*100 ); // assumption Volume only!!
+
+        // default: Arc
+        var arc = d3.arc() 
+          .innerRadius(innerRadius) 
+          .outerRadius(outerRadius)
+          .startAngle( d => d.startAngle) 
+          .endAngle(d => d.endAngle) ;
+
+
         var t = d3.transition().duration(100);
 
-        pie_svg = d3.select("#"+ xAttr.column)
-          .selectAll("#slice")
+        slices = d3.select("#"+ "pie_" + xAttr.column)
+          .select("g")
+          .selectAll(".slice")
+          .data(pie(aggDF));
 
-          pie_svg.exit().remove();
+        console.log(slices);
+
+        slices.exit().remove();
         
+        // enter
+        enter = slices
+          .enter()
+          .append("g")
+          .classed("slice", true)
+          .append("path");
 
-
-
+        slices = enter.merge(slices)
+          .append("path")
+          .attr("class", "slice path path--background")
+          .attr("d", arc)
+          .style("fill",function(d) {
+            return xAttr.colorScale(d.data.key)
+          })
+          .transition(t);
 
       }// end update of pieChart
 
