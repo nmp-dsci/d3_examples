@@ -1,5 +1,6 @@
 <!-- https://bl.ocks.org/brunob/e19581e8c2f37f861a9555616b52194a -->
 <!-- more advance filtering: http://bl.ocks.org/HarryStevens/69da410602d8ca6b9f41f72024dba791 -->
+<!-- pie chart: https://blockbuilder.org/ZijunXu/2c9d8a8db6420799ed944187100f8aee -->
 
 <!doctype html>
 <html>
@@ -27,9 +28,9 @@
         stroke: #555;
         stroke-width: 2px;
       }
-      div {
+      /* div {
         padding-right: 30px;
-      }
+      } */
       div.tooltip {
         position: absolute;
         opacity:0.8;
@@ -62,57 +63,30 @@
       </div>
 
       <div id="attribute">
-          <h2>Attribute Filter</h2>
-          <select id="year"></select>
-          <select id="propertyType"></select>
-          <select id="beds"></select>
-          <select id="baths"></select>
-          <select id="parking"></select>
-        </div>
+        <h2>Attribute Filter</h2>
+        <select id="year"></select>
+        <select id="propertyType"></select>
+        <select id="beds"></select>
+        <select id="baths"></select>
+        <select id="parking"></select>
+      </div>
 
       <div>
         <h2>Response Legend </h2>
         <div id="legend"></div>
-      </div>
-
-      <div>
         <h2> Selection Map </h2>
         <div id="map"></div>
         <div id="controls"></div>
       </div>
 
-      <div> 
-        <h2>Selection Dashboard</h2>
-        <div id="pie_"></div>
+      <div id="drivers">
+        <div>
+          <h2> Drivers</h2>
+        </div>
+      </div>
 
     <script>
 
-      // margins required
-      var width_b = 1100, 
-        height_b = 900, 
-        legend_w = width_b *1 ,
-        legend_h = 22
-        legendbar_h= 10;
-      
-      // INITIALISE MAP SVG 
-      var svg_map = d3.select("#map")
-        .append("svg")
-        .attr("width", width_b)
-        .attr("height", height_b) 
-        .attr("class","geom");
-
-      var svg_legend = d3.select("#legend")
-        .append("svg")
-        .attr("width", legend_w)
-        .attr("height",legend_h);
-        
-      var legendX = d3.scaleLinear()
-			  .range([0, legend_w]);
-
-      var t = d3.transition()
-        .duration(750);
-      
-      //  SET THE DROP DOWNS
 
       // customisable features coming from dataset
       var attrCols = [
@@ -125,6 +99,49 @@
         {class:"x", name:"Parking",column:"parking"}
       ];
 
+      function summFunc(data, agg){
+        var summDF = d3.nest()
+          .key(d=>d[agg])
+          .rollup(function(d) {
+            return {
+              sales:d3.sum(d, n=> n.sales) / d3.sum(d, de => de.volume),
+              volume:d3.sum(d, de => de.volume)
+            }
+          })
+          .entries(data); 
+        return summDF
+        };
+
+      // margins required
+      var width_b = 1100, 
+        height_b = 900, 
+        legend_w = width_b *1 ,
+        legend_h = 22
+        legendbar_h= 10;
+
+      var svg_legend = d3.select("#legend")
+        .append("svg")
+        .attr("width", legend_w)
+        .attr("height",legend_h);
+
+      var legendX = d3.scaleLinear()
+			  .range([0, legend_w]);
+
+      var t = d3.transition()
+        .duration(750);
+      
+      // INITIALISE Dashboard
+      var svg_map = d3.select("#map")
+        .append("svg")
+        .attr("width", width_b)
+        .attr("height", height_b) 
+        .attr("class","geom");
+
+
+
+
+      // ----------------------------------------------------------------------
+      //  SET THE DROP DOWNS
       //  1. Respones you can use
       attrCols.forEach(function(d){
         if (d.class == "y" ) {
@@ -157,8 +174,7 @@
       });
       $("#response #colors").val("YlOrRd")
     
-
-
+      // --------------------------------------------------------------------------
       // push data into function
       d3.queue()
         .defer(d3.json , "../d3_examples/data/POA_2016_NSW_reduced.geojson")
@@ -171,18 +187,25 @@
 
         // STEP 0: Draw "Attribute Filter Drop Down"
         var defaultX = "All";
-        attrCols.forEach(function(d){
+        attrCols.forEach(function(d,i){
           if (d.class == "x" ) {
+            // build out drop down
             xValues = 
               d3.map(
                 poa_df.filter(f => f[d.column] != "")
                 , r => r[d.column]).keys().sort();
+            xValuesRaw = xValues;
             xValues.push(defaultX+" " + d.name);
             // add drop down values
             xValues.forEach(function(v) {
       			  $("#attribute #"+d.column).append("<option value='"+d.name+"_" + v + "'>" + v + "</option>");
             });
             $("#attribute #"+d.column).val(d.name+"_"+defaultX+" " + d.name);
+            // generate universal color mapping
+            var colorScale = d3.scaleOrdinal(d3.schemeCategory10)
+              .domain(xValuesRaw);
+            attrCols[i]['colorScale'] = colorScale
+            console.log(colorScale(xValues[0]))
           }; // end loop through filter for x 
         }); // end loop through column name
 
@@ -211,20 +234,20 @@
           // style("opacity", 0);
 
         // STEP 2: Generate heatmap data
-        var summFunc = d3.nest()
-          .key(d=>d.postcode)
-          .rollup(function(d) {
-            return {
-              sales:d3.sum(d, n=> n.sales) / d3.sum(d, de => de.volume),
-              volume:d3.sum(d, de => de.volume)
-            }
-          })
-          poa_lvl = summFunc.entries(poa_df);
+        poa_lvl = summFunc(poa_df, "postcode");
         
         //  Initialise Legend Scale and drawLegend AND CHANGE listener!!
         var buckets = colorSubUnits(poa_lvl, $("#response #breaks").val(), $("#response #count").val(), $("#response #colors").val(), $("#response #column").val());
         drawLegend(buckets, $("#response #colors").val());
-        drawTooltip(poa_lvl,div);
+        drawTooltip(poa_lvl,div,poa_df);
+
+        attrCols.forEach(function(attr){
+          if (attr.class =="x"){
+            drawPie(poa_df , attr)
+          }
+        });
+        
+
 
         // SELECT ACTION on CHANGE
         $("select").change(function(){
@@ -251,14 +274,14 @@
             } // end IF through d.class
           });// end loop through Attributes
 
-          var poa_lvl = summFunc.entries(selectDF);
+          poa_lvl = summFunc(selectDF, "postcode");
           // Apply DAta
 			    buckets = colorSubUnits(poa_lvl, $("#response #breaks").val(), $("#response #count").val(), $("#response #colors").val(), $("#response #column").val());
           drawLegend(buckets, $("#response #colors").val());
-          drawTooltip(poa_lvl,div);
+          drawTooltip(poa_lvl,div,selectDF);
         });
 
-
+        // -------------------------------------------------------
         // Zoom functionality
         var mapZoom = d3.zoom()
           .on("zoom", zoomed);
@@ -308,10 +331,69 @@
 
       }; // end draw Maps
 
+      // -------------------------------------------------------
+      // drawPie
+      function drawPie(data ,xAttr ) {
 
+        aggDF = summFunc(data, xAttr.column);
+        var total = d3.sum(aggDF, d => d.value.volume);
+
+        // ADD POA driver pies
+        var  pie_w  = 300, 
+          pie_h  = 300,
+          pieLegend_h = 100,
+          outerRadius = 100,
+          innerRadius = outerRadius - 30,
+          radius = outerRadius + 25;
+
+        // initialise components of PIE
+        var pie_svg = d3.select("#drivers")
+          .append("svg")
+          .attr("width", pie_w)
+          .attr("height",pie_h+pieLegend_h )
+          .attr("id", xAttr.column)
+
+        var pie_area = pie_svg
+            .append("g")
+            .attr("transform", `translate(${pie_w/2},${pie_h/2})`);
+        
+        var pie = d3.pie()
+          .sort(null)
+          .value(d => (d.value.volume/total)*100 ); // assumption Volume only!!
+
+        var arc = d3.arc() 
+          .innerRadius(innerRadius) 
+          .outerRadius(outerRadius)
+          .startAngle( d => d.startAngle) 
+          .endAngle(d => d.endAngle) ;
+
+        // // Pull it together
+        var slice = pie_area
+          .selectAll(".slice")
+            .data(pie(aggDF))
+            .enter()
+              .append("g")
+              .classed("slice", true);
+
+        slice
+          .append("path")
+          .attr("class", "slice path path--background")
+          .attr("d", arc)
+          .style("fill",function(d) {
+            console.log(d)
+            console.log(xAttr.colorScale(d.data.key))
+            return xAttr.colorScale(d.data.key)
+          } )
+
+        // DRAW pie legend
+        pieLegend = pie_svg
+
+      }
+
+      // -------------------------------------------------------
       // Draw Tooltip
-      function drawTooltip(data,div){
-        data.forEach(function(e){
+      function drawTooltip(mapDF,div,masterDF){
+        mapDF.forEach(function(e){
           // text in tool tip (HTML)
           var tooltip = "<b> Postcode: </b> " + e.key +"<br>" +
           "<b> Sale Price: </b> $" +d3.format(",")(Math.round(e.value.sales,0))   +"<br>" +
@@ -322,12 +404,15 @@
           d3.select("#poa"+e.key)
             // .attr("class", "postcode q"+quantile(Math.sqrt(+e.value.sales))+"-9")
             .on("mouseover", function(d) { 
+              // tooltip type
               div.transition()
                 .duration(200)
                 .style("opacity", 0.9);
               div.html(tooltip)
                 .style("left",(d3.event.pageX + 30) + "px")
-                .style("top", (d3.event.pageY - 30) + "px")
+                .style("top", (d3.event.pageY - 30) + "px");
+              // 
+              
             })
             .on("mouseout", function(d) { 
               div.transition()
@@ -341,7 +426,7 @@
       }; // end function "drawTooltip"
 
 
-
+      // -------------------------------------------------------
 			function drawLegend(buckets, colorScheme){
 
         // update legendX domain
@@ -408,7 +493,7 @@
 
       }
 
-
+      // -------------------------------------------------------
 			function colorSubUnits(data, breakType, breakCount, colorScheme, value){
 
         var nums = data.filter(d => !isNaN(+d['value'][value])).map(d => +d['value'][value] );
