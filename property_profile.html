@@ -81,7 +81,7 @@
 
       <div id="drivers">
         <div>
-          <h2> Drivers</h2>
+          <h2> Composition of Property Sales</h2>
         </div>
       </div>
 
@@ -114,7 +114,7 @@
 
       // margins required
       var width_b = 1100, 
-        height_b = 900, 
+        height_b = 500, 
         legend_w = width_b *1 ,
         legend_h = 22
         legendbar_h= 10;
@@ -239,13 +239,15 @@
         //  Initialise Legend Scale and drawLegend AND CHANGE listener!!
         var buckets = colorSubUnits(poa_lvl, $("#response #breaks").val(), $("#response #count").val(), $("#response #colors").val(), $("#response #column").val());
         drawLegend(buckets, $("#response #colors").val());
-        drawTooltip(poa_lvl,div,poa_df);
+        drawTooltip(poa_lvl,div);
 
         attrCols.forEach(function(attr){
           if (attr.class =="x"){
             drawPie(poa_df , attr)
           }
         });
+
+        updatePie(poa_df.filter(d => d.year =="2017") , attrCols[3]);
         
 
 
@@ -278,7 +280,7 @@
           // Apply DAta
 			    buckets = colorSubUnits(poa_lvl, $("#response #breaks").val(), $("#response #count").val(), $("#response #colors").val(), $("#response #column").val());
           drawLegend(buckets, $("#response #colors").val());
-          drawTooltip(poa_lvl,div,selectDF);
+          drawTooltip(poa_lvl,div);
         });
 
         // -------------------------------------------------------
@@ -339,8 +341,8 @@
         var total = d3.sum(aggDF, d => d.value.volume);
 
         // ADD POA driver pies
-        var  pie_w  = 300, 
-          pie_h  = 300,
+        var  pie_w  = 250, 
+          pie_h  = 250,
           pieLegend_h = 100,
           outerRadius = 100,
           innerRadius = outerRadius - 30,
@@ -352,6 +354,16 @@
           .attr("width", pie_w)
           .attr("height",pie_h+pieLegend_h )
           .attr("id", xAttr.column)
+
+        // Add title
+        pie_svg
+          .append("text")
+          .attr("x", (pie_w / 2))             
+          .attr("y", 15 )
+          .attr("text-anchor", "middle")  
+          .style("font-size", "16px") 
+          .style("text-decoration", "underline")  
+          .text(xAttr.name);
 
         var pie_area = pie_svg
             .append("g")
@@ -384,15 +396,34 @@
             console.log(xAttr.colorScale(d.data.key))
             return xAttr.colorScale(d.data.key)
           } )
+      } // end drawPie
 
-        // DRAW pie legend
-        pieLegend = pie_svg
+      // -------------------------------------------------------
+      function updatePie(data ,xAttr){
 
-      }
+        aggDF = summFunc(data, xAttr.column);
+        var total = d3.sum(aggDF, d => d.value.volume);
+        var t = d3.transition().duration(100);
+
+        pie_svg = d3.select("#"+ xAttr.column)
+          .selectAll("#slice")
+
+          pie_svg.exit().remove();
+        
+
+
+
+
+      }// end update of pieChart
+
+
+
+
+
 
       // -------------------------------------------------------
       // Draw Tooltip
-      function drawTooltip(mapDF,div,masterDF){
+      function drawTooltip(mapDF,div){
         mapDF.forEach(function(e){
           // text in tool tip (HTML)
           var tooltip = "<b> Postcode: </b> " + e.key +"<br>" +
