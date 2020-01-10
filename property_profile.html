@@ -61,8 +61,8 @@
         <select id="colors"></select>
       </div>
 
-      <div id="descriptors">
-          <h2>Attributes</h2>
+      <div id="attribute">
+          <h2>Attribute Filter</h2>
           <select id="year"></select>
           <select id="propertyType"></select>
           <select id="beds"></select>
@@ -74,19 +74,27 @@
         <h2>Response Legend </h2>
         <div id="legend"></div>
       </div>
-      <div id="map"></div>
-      <div id="controls"></div>
+
+      <div>
+        <h2> Selection Map </h2>
+        <div id="map"></div>
+        <div id="controls"></div>
+      </div>
+
+      <div> 
+        <h2>Selection Dashboard</h2>
+        <div id="pie_"></div>
 
     <script>
 
-      // 
+      // margins required
       var width_b = 1100, 
         height_b = 900, 
         legend_w = width_b *1 ,
         legend_h = 22
         legendbar_h= 10;
       
-      // INITIALISE SVG 
+      // INITIALISE MAP SVG 
       var svg_map = d3.select("#map")
         .append("svg")
         .attr("width", width_b)
@@ -105,15 +113,25 @@
         .duration(750);
       
       //  SET THE DROP DOWNS
-      //  1. Respones you can use
-      var poa_reponses = [
-        {name:"Mean Sale Price",column:"sales"},
-        {name:"Properties Sold",column:"volume"}
+
+      // customisable features coming from dataset
+      var attrCols = [
+        {class:"y", name:"Mean Sale Price",column:"sales"},
+        {class:"y", name:"Properties Sold",column:"volume"},
+        {class:"x", name:"Year",column:"year"},
+        {class:"x", name:"Property Type",column:"propertyType"},
+        {class:"x", name:"Bedrooms",column:"beds"},
+        {class:"x", name:"Bathrooms",column:"baths"},
+        {class:"x", name:"Parking",column:"parking"}
       ];
-      poa_reponses.forEach(function(d){
-        $("#response #column").append("<option value='"+ d.column+"'>"+d.name+"</option>")
+
+      //  1. Respones you can use
+      attrCols.forEach(function(d){
+        if (d.class == "y" ) {
+          $("#response #column").append("<option value='"+ d.column+"'>"+d.name+"</option>")
+        }
       });
-      $("#response #column").val("sales");
+      $("#response #column").val(attrCols.filter(function(d) {return d.class =="y" ; })[0].column);
 
       // 2. clustering function 
 			var breaks = [
@@ -139,19 +157,6 @@
       });
       $("#response #colors").val("YlOrRd")
     
-      // ATTRIBUTES
-      attrCols = [
-        {name:"Property Type",column:"propertyType"},
-        {name:"Property Type",column:"propertyType"},
-        {name:"Property Type",column:"propertyType"},
-        {name:"Property Type",column:"propertyType"},
-        {name:"Property Type",column:"propertyType"}
-      ]
-
-
-
-
-
 
 
       // push data into function
@@ -160,22 +165,28 @@
         .defer(d3.csv, "../d3_examples/data/property_poa.csv")
         .await(drawMaps);
 
-      function drawMaps(error, map_json,poa_summ) {
+      function drawMaps(error, map_json,poa_df) {
 
         if (error) throw error;
 
-        // STEP 1: prepare aggregate CSV for heatmap
-        var poa_lvl = d3.nest()
-          .key(d=>d.postcode)
-          .rollup(function(d) {
-            return {
-              sales:d3.sum(d, n=> n.sales) / d3.sum(d, de => de.volume),
-              volume:d3.sum(d, de => de.volume)
-            }
-          })
-          .entries(poa_summ);
-        
-        // STEP 2: DRAW Map
+        // STEP 0: Draw "Attribute Filter Drop Down"
+        var defaultX = "All";
+        attrCols.forEach(function(d){
+          if (d.class == "x" ) {
+            xValues = 
+              d3.map(
+                poa_df.filter(f => f[d.column] != "")
+                , r => r[d.column]).keys().sort();
+            xValues.push(defaultX+" " + d.name);
+            // add drop down values
+            xValues.forEach(function(v) {
+      			  $("#attribute #"+d.column).append("<option value='"+d.name+"_" + v + "'>" + v + "</option>");
+            });
+            $("#attribute #"+d.column).val(d.name+"_"+defaultX+" " + d.name);
+          }; // end loop through filter for x 
+        }); // end loop through column name
+
+        // STEP 1: DRAW Map
         var projection = d3
         .geoMercator() 
         .scale(30000)	  // zoom in 
@@ -193,51 +204,60 @@
           .attr("id", d => "poa" + d.properties.POA_CODE16)
           .attr("d", path);
 
-        //  Initialise Legend Scale and drawLegend AND CHANGE listener!!
-        var buckets = colorSubUnits(poa_lvl, $("#response #breaks").val(), $("#response #count").val(), $("#response #colors").val(), $("#response #column").val());
-        console.log(buckets);
-        drawLegend(buckets, $("#response #colors").val());
-        // listener
-        $("#response select").change(function(){
-			    buckets = colorSubUnits(poa_lvl, $("#response #breaks").val(), $("#response #count").val(), $("#response #colors").val(), $("#response #column").val());
-			    drawLegend(buckets, $("#response #colors").val());
-        });
-
-        // Tooltip and color shape
-        poa_lvl.forEach(function(e){
-          // text in tool tip (HTML)
-          var tooltip = "<b> Postcode: </b> " + e.key +"<br>" +
-          "<b> Sale Price: </b> $" +d3.format(",")(Math.round(e.value.sales,0))   +"<br>" +
-          "<b> Properties: </b>" +d3.format(",")(Math.round(e.value.volume,0))   +"<br>" ;
-          // 
-          // console.log();
-          // 
-          d3.select("#poa"+e.key)
-            // .attr("class", "postcode q"+quantile(Math.sqrt(+e.value.sales))+"-9")
-            .on("mouseover", function(d) { 
-              div.transition()
-                .duration(200)
-                .style("opacity", 0.9);
-              div.html(tooltip)
-                .style("left",(d3.event.pageX + 30) + "px")
-                .style("top", (d3.event.pageY - 30) + "px")
-            })
-            .on("mouseout", function(d) { 
-              div.transition()
-                .duration(500)
-                .style("opacity", 0);
-              div.html("")
-                .style("left" , "0px")
-                .style("top", "0px")
-            });
-
-        });
-
         // append a DIV for the tooltip
         var div = d3.select("#map")
           .append("div")
           .attr("class", "tooltip");
           // style("opacity", 0);
+
+        // STEP 2: Generate heatmap data
+        var summFunc = d3.nest()
+          .key(d=>d.postcode)
+          .rollup(function(d) {
+            return {
+              sales:d3.sum(d, n=> n.sales) / d3.sum(d, de => de.volume),
+              volume:d3.sum(d, de => de.volume)
+            }
+          })
+          poa_lvl = summFunc.entries(poa_df);
+        
+        //  Initialise Legend Scale and drawLegend AND CHANGE listener!!
+        var buckets = colorSubUnits(poa_lvl, $("#response #breaks").val(), $("#response #count").val(), $("#response #colors").val(), $("#response #column").val());
+        drawLegend(buckets, $("#response #colors").val());
+        drawTooltip(poa_lvl,div);
+
+        // SELECT ACTION on CHANGE
+        $("select").change(function(){
+          console.log("CHANGE in Selection")
+          // Generate Dat to visualise
+          selectDF = poa_df;
+
+          selectX = attrCols.forEach(function(d){
+            if (d.class == "x" ) {
+              aaa=  {
+                name: d.name,
+                column: d.column,
+                value: $("#attribute #"+d.column).val()
+              }
+              console.log(aaa)
+              // Apply filter if not all
+              if (aaa.value != aaa.name+"_"+defaultX+" "+aaa.name){
+                console.log("Apply filter")
+                filterX = aaa.value.replace(aaa.name+"_","")
+                console.log(filterX)
+                selectDF = selectDF.filter(r => r[d.column] == filterX)
+                // data.filter(d => !isNaN(+d['value'][value])).map(d => +d['value'][value] ); 
+              }
+            } // end IF through d.class
+          });// end loop through Attributes
+
+          var poa_lvl = summFunc.entries(selectDF);
+          // Apply DAta
+			    buckets = colorSubUnits(poa_lvl, $("#response #breaks").val(), $("#response #count").val(), $("#response #colors").val(), $("#response #column").val());
+          drawLegend(buckets, $("#response #colors").val());
+          drawTooltip(poa_lvl,div);
+        });
+
 
         // Zoom functionality
         var mapZoom = d3.zoom()
@@ -285,7 +305,42 @@
         d3.select("#controls").append("button")
             .on("click", () => { zoomButton("out")}).html("Zoom Out");
 
+
       }; // end draw Maps
+
+
+      // Draw Tooltip
+      function drawTooltip(data,div){
+        data.forEach(function(e){
+          // text in tool tip (HTML)
+          var tooltip = "<b> Postcode: </b> " + e.key +"<br>" +
+          "<b> Sale Price: </b> $" +d3.format(",")(Math.round(e.value.sales,0))   +"<br>" +
+          "<b> Properties: </b>" +d3.format(",")(Math.round(e.value.volume,0))   +"<br>" ;
+          // 
+          // console.log();
+          // 
+          d3.select("#poa"+e.key)
+            // .attr("class", "postcode q"+quantile(Math.sqrt(+e.value.sales))+"-9")
+            .on("mouseover", function(d) { 
+              div.transition()
+                .duration(200)
+                .style("opacity", 0.9);
+              div.html(tooltip)
+                .style("left",(d3.event.pageX + 30) + "px")
+                .style("top", (d3.event.pageY - 30) + "px")
+            })
+            .on("mouseout", function(d) { 
+              div.transition()
+                .duration(500)
+                .style("opacity", 0);
+              div.html("")
+                .style("left" , "0px")
+                .style("top", "0px")
+            });
+        }); // end loop through data 
+      }; // end function "drawTooltip"
+
+
 
 			function drawLegend(buckets, colorScheme){
 
@@ -323,11 +378,11 @@
         legendNumber
           .transition(t)
             .attr("x", function(d){ return legendX(d.x); })
-            .text(function(d){ return (d.x/1000).toFixed(0)+'k'; });
+            .text(function(d){ return d3.format(".2s")(d.x); });
 
         legendMax
             .attr("x", function(d){ return legendX(d); })
-            .text(function(d){ return (d/1000).toFixed(0)+'k'; })
+            .text(function(d){ return d3.format(".2s")(d); })
 
         // ENTER
         legendRect.enter().append("rect")
@@ -342,14 +397,14 @@
             .attr("class", "legend-number")
             .attr("y", legend_h)
             .attr("x", function(d){ return legendX(d.x); })
-            .text(function(d){ return (d.x/1000).toFixed(0)+'k'; });
+            .text(function(d){ return d3.format(".2s")(d.x); });
             
         legendMax.enter().append("text")
             .attr("class", "legend-max")
             .attr("y", legend_h)
             .attr("x", function(d){ return legendX(d); })
             .style("text-anchor", "end")
-            .text(function(d){ return (d/1000).toFixed(0) +'k'; });
+            .text(function(d){ return d3.format(".2s")(d); });
 
       }
 
@@ -358,7 +413,7 @@
 
         var nums = data.filter(d => !isNaN(+d['value'][value])).map(d => +d['value'][value] );
         var buckets = chroma.limits(nums, breakType, breakCount);
-        console.log(buckets);
+        // console.log(buckets);
 
         data.forEach(function(e){
           d3.select("#poa"+e.key)

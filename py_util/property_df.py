@@ -31,6 +31,8 @@ df.sale_price = df.sale_price.apply(lambda x: np.NaN if x < 300000 or x > 100000
 
 ###  postcode summ 
 df['year'] = df.dateID.str.slice(0,4)
+df = df.query("year >=  '2014' and year <= '2017'")
+df.year.value_counts()
 
 baseID = ['postcode', 'year']
 aggID = ['baths','beds','parking','propertyType']
@@ -60,5 +62,17 @@ poa_master = poa_master.rename(columns={'POA_CODE_2016':'postcode',"AREA_ALBERS_
 poa_summ = poa_master.merge(poa_summ, on='postcode',how='left')
 
 poa_summ.to_csv("property_poa.csv")
+
+
+# investigations into data
+df = pd.read_csv("property_poa.csv")
+
+aaa = df.query('postcode==2030 and propertyType=="house" ')
+
+
+aaa.sales.sum()/aaa.volume.sum()
+
+
+
 
 
