@@ -241,11 +241,15 @@
         drawLegend(buckets, $("#response #colors").val());
         drawTooltip(poa_lvl,div);
 
+        // Initialise Pie charts
         attrCols.forEach(function(attr){
           if (attr.class =="x"){
-            drawPie(poa_df , attr)
+            innitPie( attr)
           }
         });
+
+        updatePie(poa_df ,attrCols[3])
+
 
 
         // SELECT ACTION on CHANGE
@@ -336,20 +340,28 @@
       }; // end draw Maps
 
       // -------------------------------------------------------
-      // drawPie
-      function drawPie(data ,xAttr ) {
+      // Innitialise PIE
 
-        aggDF = summFunc(data, xAttr.column);
-        var total = d3.sum(aggDF, d => d.value.volume);
+      // globals for pie generation
+      var  pie_w  = 250, 
+        pie_h  = 250,
+        pieLegend_h = 100,
+        outerRadius = 100,
+        innerRadius = outerRadius - 30,
+        radius = outerRadius + 25;
 
-        // ADD POA driver pies
-        var  pie_w  = 250, 
-          pie_h  = 250,
-          pieLegend_h = 100,
-          outerRadius = 100,
-          innerRadius = outerRadius - 30,
-          radius = outerRadius + 25;
+      var pie = d3.pie()
+          .sort(null)
+          .value(d => d.value.volume_pctn ); // assumption Volume only!!
 
+        var arc = d3.arc() 
+          .innerRadius(innerRadius) 
+          .outerRadius(outerRadius)
+          .startAngle( d => d.startAngle) 
+          .endAngle(d => d.endAngle) ;
+
+      // init SVG
+      function innitPie(xAttr ) {
         // initialise components of PIE
         var pie_svg = d3.select("#drivers")
           .append("svg")
@@ -369,17 +381,32 @@
 
         var pie_area = pie_svg
             .append("g")
-            .attr("transform", `translate(${pie_w/2},${pie_h/2})`);
-        
-        var pie = d3.pie()
-          .sort(null)
-          .value(d => (d.value.volume/total)*100 ); // assumption Volume only!!
+            .attr("transform", `translate(${pie_w/2},${pie_h/2})`)
+            .attr("id","pie_" + xAttr.column+"_g")
 
-        var arc = d3.arc() 
-          .innerRadius(innerRadius) 
-          .outerRadius(outerRadius)
-          .startAngle( d => d.startAngle) 
-          .endAngle(d => d.endAngle) ;
+      } // end innitPIE
+
+      // -------------------------------------------------------
+      function updatePie(data ,xAttr){
+        // 
+        aggDF = summFunc(data, xAttr.column);
+        var total = d3.sum(aggDF, d => d.value.volume);
+        aggDF2 = aggDF.forEach(function(d) {
+          return d.value.pctn =(d.value.volume/total)*100 
+        })
+        console.log(aggDF) ;
+
+        // get into 'g' element
+        path = d3.select("#" +xAttr.column+"_g" )
+          .selectAll("path");
+
+        // old / new data
+        data0 = path.data() , 
+        data1 = pie(pie(aggDF))
+
+
+        pie_data 
+
 
         // // Pull it together
         var slice = pie_area
@@ -396,33 +423,7 @@
           .style("fill",function(d) {
             return xAttr.colorScale(d.data.key)
           })
-      } // end drawPie
 
-      // -------------------------------------------------------
-      function updatePie(data ,xAttr){
-
-        aggDF = summFunc(data, xAttr.column);
-        var total = d3.sum(aggDF, d => d.value.volume);
-
-        // ADD POA driver pies
-        var  pie_w  = 250, 
-          pie_h  = 250,
-          pieLegend_h = 100,
-          outerRadius = 100,
-          innerRadius = outerRadius - 30,
-          radius = outerRadius + 25;
-
-        // default: Pie
-        var pie = d3.pie()
-          .sort(null)
-          .value(d => (d.value.volume/total)*100 ); // assumption Volume only!!
-
-        // default: Arc
-        var arc = d3.arc() 
-          .innerRadius(innerRadius) 
-          .outerRadius(outerRadius)
-          .startAngle( d => d.startAngle) 
-          .endAngle(d => d.endAngle) ;
 
 
         var t = d3.transition().duration(100);

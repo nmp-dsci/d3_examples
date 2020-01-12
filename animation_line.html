@@ -1,0 +1,171 @@
+<!-- https://bl.ocks.org/jmuyskens/dae9a87c345d152a7af5ad7ddd86b746 -->
+<!doctype html>
+<html>
+  <head>
+      <title>Animation_line</title>
+      <script src="../d3_examples/resources/d3.4.2.8.min.js" type="text/JavaScript"></script>
+      <style>
+      /* insert CSS */
+      body {
+        margin:0;
+        position:fixed; 
+        top:0;
+        right:0;
+        bottom:0;
+        left:0;
+      }
+      .axis path {
+        display: none;
+      }
+      .axis.y line {
+        stroke: silver;
+      }
+      path.country {
+        opacity: 0.2;
+      }
+    </style>
+  </head>
+  <body>
+    <!-- <div id="viz">
+      <svg style="width:600px;height:600px;" ></svg>
+    </div> -->
+    <script>
+      var margin = {top:20, right:40,bottom:20,left:20};
+      var width_b = 400, height_b = 300;
+      var width =width_b - margin.right - margin.left;
+      var height = height_b - margin.top - margin.bottom;
+
+      var svg = d3.select("body")
+        .append("svg")
+        .attr("width", width_b)
+        .attr("height", height_b)
+        .append("g")
+        .attr("transform", `translate(${margin.left}, ${margin.top} )`);
+
+      d3.csv("data/oecd.csv", function(data){
+
+        // aggregate the DATA
+        data = data.filter(function(d) {
+          return d.HEALTHEXP !== "NA" && d.LIFEEXP !== "NA";
+        }); 
+
+        var dataByYear = d3.nest()
+          .key(d => d.TIME)
+          .entries(data);
+
+        var dataByCountry = d3.nest()
+          .key(d => d.LOCATION )
+          .entries(data);
+
+        console.log(dataByYear);
+
+        // ----------------------------------------------------
+        // AXis/ Scales
+        var xCol = 'HEALTHEXP',yCol = 'LIFEEXP';
+
+        // X-axis
+        var xScale = d3.scaleLinear()
+          .domain([0, d3.max(data.map(d => +d[xCol]  ))])
+          .range([0, width]);
+
+        var yScale = d3.scaleLinear()
+          .domain(d3.extent(data.map(d => +d[yCol]  )))
+          .range([height,0]);
+
+        var xAxis = d3.axisBottom(xScale).ticks(4);
+        var yAxis = d3.axisLeft(yScale).ticks(4).tickSize(width);
+
+        svg.append("g")
+          .attr("class", "axis x")
+          .attr("transform", `translate(0,${height})`)
+          .call(xAxis);
+
+        svg.append("g")
+          .attr("class", "axis y")
+          .attr("transform", `translate(${width}, 0)`)
+          .call(yAxis);
+
+        // ----------------------------------------------------
+        // Create path object
+        var path = d3.line()
+          .x(d => xScale(+d[xCol]))
+          .y(d => yScale(+d[yCol]));
+
+        // 
+        function update(data) { 
+
+          console.log(data) ;
+          // update1 : circles
+          var circles = svg.selectAll('circle') 
+            .data(data ) ;
+
+          circles.exit().remove();
+
+          circles.enter()
+            .append("circle")
+            .attr("r", 3)
+            .attr("fill", "black")
+            .on("mouseover", d => console.log(d))
+            .merge(circles)
+            .attr("cx", d => xScale(+d[xCol]))
+            .attr("cy", d => yScale(+d[yCol]));
+
+          // update2:  labels
+          var labels = svg.selectAll("text.label")
+            .data(data.filter(function(d) {
+              return d.LOCATION === "USA" || d.LOCATION === "JPN"; 
+            }), function(d) { return d.LOCATION; });
+
+          labels.exit().remove();
+
+          labels.enter().append("text")
+            .attr("class", "label")
+            .text(d => d.LOCATION ) 
+            .attr("dx", 5)
+            .attr("dy", 3)
+            .merge(labels)
+            .attr("transform", function(d) { 
+              console.log(`translate(${xScale(+d[xCol])},${yScale(+d[yCol])})`)
+              return `translate(${xScale(+d[xCol])},${yScale(+d[yCol])})`
+            } )
+
+
+          // UPDATE Paths on plot
+          var countryPaths = svg.selectAll('path.country')
+            .data(dataByCountry);
+
+          countryPaths.exit().remove();
+
+          countryPaths.enter()
+            .append("path")
+            .attr("class", "country")
+            .attr("stroke", "black")
+            .attr("fill", "none")
+            .merge(countryPaths)
+            .attr("d", function(d){
+              console.log('path values')
+              console.log(d.values)
+              return path(d.values);
+            }  );
+
+        } // end UPDATE function
+
+        svg.append("text")
+          .text("replay")
+          .on("click", function() { i =0 ;});
+        
+
+
+        var i = 0;
+        d3.interval(function() {
+          if (i < dataByYear.length) update(dataByYear[i++].values);
+          }, 250 ) ;
+
+      });// end data function
+
+
+
+
+    </script>
+  </body>
+</html>

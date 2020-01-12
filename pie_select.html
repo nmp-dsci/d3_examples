@@ -112,13 +112,11 @@
             .transition()
             .duration(myDuration)
             .attrTween("d", function(d, index) {
-
               var currentIndex = this._previous.data.region;
               var i = d3.interpolateObject(d,this._previous);
               return function(t) {
                 return arc(i(t))
               }
-
             })
             .remove()
 
