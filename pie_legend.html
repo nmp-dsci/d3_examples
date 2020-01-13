@@ -1,17 +1,124 @@
-
+<!-- https://blockbuilder.org/ZijunXu/2c9d8a8db6420799ed944187100f8aee -->
 <!doctype html>
 <html>
   <head>
       <script src="../d3_examples/resources/d3.4.2.8.min.js" type="text/JavaScript"></script>
+      <script src="../d3_examples/resources/d3-legend.2.24.0.js" type="text/JavaScript"></script>      
       <style>
       /* insert CSS */
+      body { 
+        margin: 0px;
+      }
+      .tick text, .legendCells text { 
+        fill: #111111;
+        font-size: 10pt;
+        font-family: 'Open Sans', sans-serif;
+      }
+      .axis-label, .legend-label {
+        fill: #AAAAAA; 
+        font-size: 10pt;
+        font-family: 'Open Sans', sans-serif; 
+      }
+      .circle:hover {
+        fill: #F012BE;
+      }
+      div.tooltip { 
+        position: absolute;
+        text-align: center; 
+        width: 280px;
+        height: 60px;
+        vertical-align: middle; 
+        line-height: 30px;
+        font-family: 'Open Sans', sans-serif; 
+        background: #FFDC00;
+        border: 0px; 
+        border-radius: 8px;
+        pointer-events: none;
+      }
     </style>
   </head>
   <body>
-    <div id="viz">
-      <svg style="width:600px;height:600px;" ></svg>
-    </div>
     <script>
+      const colorLabel = "National Detonated" ; 
+      const margin = {left:100, right: 120, top:20, bottom: 120 };
+      
+      const svg = d3.select("body")
+        .append("svg") 
+        .attr("width", 960) 
+        .attr("height" , 500);
+
+      const width = svg.attr("width"),
+        height = svg.attr("height");
+      const innerWidth = width - margin.left - margin.right,
+        innerHeight = height - margin.top - margin.bottom; 
+
+      const g = svg.append("g") 
+        .attr("transform", `translate(${margin.left}, ${margin.top + 50})`);
+
+      const colorLegendG = g. append("g")
+        .attr("transform",`translate(${innerWidth-100}, 50)` );
+
+      const canvas = g.append("g") 
+        .attr("transform", `translate(${innerWidth/2},${innerHeight/2})`);
+
+      var temp = d3.select('body')
+        .append("div") 
+        .attr("class", "tooltip")
+        .style("opacity", 0);
+
+      colorLegendG.append("text")
+        .attr("class", "legend-label")
+        .attr("x", -30)
+        .attr("y", -20)
+        .text(colorLabel);
+
+      const colorScale = d3.scaleOrdinal()
+        .range(d3.schemeCategory10);
+
+      const colorLegend = d3.legendColor()
+        .scale(colorScale)
+        .shape('circle');
+
+      const pie = d3.pie().value(d => d.value) ;
+      const arc = d3.arc()
+        .innerRadius(innerHeight / 4) 
+        .outerRadius(innerHeight / 2);
+
+      d3.csv("../d3_examples/data/sipri-report-explosions.csv",data => {
+
+        var temp_data = d3.nest()
+          .key(function(d) { return d.country ; } )
+          .rollup(d => d.length)
+          .entries(data);
+
+        const arcs = pie(temp_data);
+
+        canvas.selectAll("path") 
+          .data(arcs) 
+          .enter() 
+          .append("path")
+          .attr("d", arc) 
+          .attr("fill", d => colorScale(d.data.key))
+          .on("mouseover", function(d){ 
+            temp.transition()
+              .duration(200)
+              .style("opacity",1);
+            temp.html("Detontated by " + d.data.key + '<br>'+"Count: "+d.data.value)
+              .style("left", (d3.event.pageX - 60) + "px")
+              .style("top", (d3.event.pageY + 20 ) + "px");
+          })
+          .on("mouseout", function(d) { 
+            temp.transition()
+              .duration(500)
+              .style("opacity", 0);
+          });
+
+        // apply legen
+        colorLegendG.call(colorLegend)
+          .selectAll(".cell text")
+          .attr("dy", "0.1em");
+      });
+
     </script>
   </body>
 </html>

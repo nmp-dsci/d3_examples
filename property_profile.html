@@ -23,7 +23,7 @@
         cursor: pointer;
         stroke: black;
         stroke-width: .5px;
-        fill: grey;
+        fill: #DCDCDC;
       }
       .postcode:hover {
         stroke: #555;
@@ -80,11 +80,17 @@
         <div id="controls"></div>
       </div>
 
-      <div id="drivers">
+      <div id="drivers1">
         <div>
           <h2> Composition of Property Sales</h2>
         </div>
       </div>
+
+      <div id="drivers2">
+          <div>
+            <h2> Postcode of Focus</h2>
+          </div>
+        </div>
 
     <script>
 
@@ -186,6 +192,16 @@
 
         if (error) throw error;
 
+        // master list of postcodes
+        var poa_all = d3.nest()
+          .key(function(d) {
+            return d.properties.POA_CODE16; 
+          })
+          .entries(map_json.features);
+        console.log('master list of postcodes') 
+        console.log(poa_all)
+
+
         // STEP 0: Draw "Attribute Filter Drop Down"
         var defaultX = "All";
         attrCols.forEach(function(d,i){
@@ -239,17 +255,22 @@
         //  Initialise Legend Scale and drawLegend AND CHANGE listener!!
         var buckets = colorSubUnits(poa_lvl, $("#response #breaks").val(), $("#response #count").val(), $("#response #colors").val(), $("#response #column").val());
         drawLegend(buckets, $("#response #colors").val());
-        drawTooltip(poa_lvl,div);
+        drawTooltip(poa_lvl,div,poa_df);
 
         // Initialise Pie charts
         attrCols.forEach(function(attr){
           if (attr.class =="x"){
-            innitPie( attr)
+            innitPie( attr,"#drivers1")
+            innitPie( attr,"#drivers2")
           }
         });
-
-        updatePie(poa_df ,attrCols[3])
-
+        //  set the piezs
+        attrCols.forEach(function(attr){
+          if (attr.class =="x"){
+            updatePie(poa_df, attr,"#drivers1")
+            updatePie(poa_df, attr,"#drivers2")
+          }
+        });
 
 
         // SELECT ACTION on CHANGE
@@ -278,12 +299,13 @@
           // Apply DAta
 			    buckets = colorSubUnits(poa_lvl, $("#response #breaks").val(), $("#response #count").val(), $("#response #colors").val(), $("#response #column").val());
           drawLegend(buckets, $("#response #colors").val());
-          drawTooltip(poa_lvl,div);
+          drawTooltip(poa_lvl,div,selectDF);
 
-          // Update dashboar
+          // Update dashboard
           attrCols.forEach(function(attr){
             if (attr.class =="x"){
-              updatePie(selectDF , attr)
+              updatePie(selectDF , attr, "#drivers1")
+              updatePie(selectDF , attr, "#drivers2")
             }
           });
 
@@ -352,18 +374,77 @@
 
       var pie = d3.pie()
           .sort(null)
-          .value(d => d.value.volume_pctn ); // assumption Volume only!!
+          .value(d => d.value.pctn ); // assumption Volume only!!
 
-        var arc = d3.arc() 
-          .innerRadius(innerRadius) 
-          .outerRadius(outerRadius)
-          .startAngle( d => d.startAngle) 
-          .endAngle(d => d.endAngle) ;
+      var arc = d3.arc() 
+        .innerRadius(innerRadius) 
+        .outerRadius(outerRadius)
+        .startAngle( d => d.startAngle) 
+        .endAngle(d => d.endAngle) ;
+
+
+
+      //  Generating the Transition
+      var myDuration = 600;
+      // 1.
+      function arcTween(d) {
+        var i = d3.interpolate(this._current, d);
+        this._current = i(0);
+        return function(t) {
+          return arc(i(t))
+        }
+      }// end function = "arcTween"
+
+      // 2.
+      function findNeighborArc(i, data0, data1, key) { 
+        var d;
+        if (d = findPreceding(i, data0 , data1, key )) { 
+          var obj = cloneObj(d)
+          obj.startAngle = d.endAngle;
+          return obj;
+        } else if (d = findFollowing(i, data0, data1, key)) {
+          var obj = cloneObj(d)
+          d.endAngle = obj.startAngle;
+          return obj;          
+        }
+        return null
+      }
+
+      // 3.
+      function findPreceding(i, data0, data1, key) {
+        var m = data0.length;
+        while (--i >= 0) {
+          var k = key(data1[i]);
+          for (var j = 0; j < m; ++j) {
+            if (key(data0[j]) === k) return data0[j];
+          }
+        }
+      }
+
+      // 4.
+      function findFollowing(i, data0, data1, key) {
+        var n = data1.length, m = data0.length;
+        while (++i < n) {
+          var k = key(data1[i]);
+          for (var j = 0; j < m; ++j) {
+            if (key(data0[j]) === k) return data0[j];
+          }
+        }
+      }
+
+      function cloneObj(obj) {
+        var o = {};
+        for(var i in obj) {
+          o[i] = obj[i];
+        }
+        return o;
+      }
+      
 
       // init SVG
-      function innitPie(xAttr ) {
+      function innitPie(xAttr, divID ) {
         // initialise components of PIE
-        var pie_svg = d3.select("#drivers")
+        var pie_svg = d3.select(divID)
           .append("svg")
           .attr("width", pie_w)
           .attr("height",pie_h+pieLegend_h )
@@ -384,74 +465,91 @@
             .attr("transform", `translate(${pie_w/2},${pie_h/2})`)
             .attr("id","pie_" + xAttr.column+"_g")
 
+        var pie_legend
+
       } // end innitPIE
 
       // -------------------------------------------------------
-      function updatePie(data ,xAttr){
+      function updatePie(data ,xAttr,divID){
         // 
         aggDF = summFunc(data, xAttr.column);
         var total = d3.sum(aggDF, d => d.value.volume);
         aggDF2 = aggDF.forEach(function(d) {
           return d.value.pctn =(d.value.volume/total)*100 
         })
-        console.log(aggDF) ;
+        // console.log(xAttr.column) ;
 
         // get into 'g' element
-        path = d3.select("#" +xAttr.column+"_g" )
+        path = d3.select(divID)
+          .select("#pie_" +xAttr.column + "_g" )
+          // .selectAll("g")
           .selectAll("path");
 
         // old / new data
         data0 = path.data() , 
-        data1 = pie(pie(aggDF))
+        data1 = pie(aggDF);
 
+        // console.log("data0")
+        // console.log(data0);
+        // console.log("data1")
+        // console.log(data1);
 
-        pie_data 
+        function keyf(d) {
+          return d.data[xAttr.column]
+         };
 
+        // pie_data 
+        path = path.data(data1, keyf);
 
-        // // Pull it together
-        var slice = pie_area
-          .selectAll(".slice")
-            .data(pie(aggDF))
-            .enter()
-              .append("g")
-              .classed("slice", true);
+        path
+          .transition()
+          .duration(myDuration)
+          .attrTween("d",arcTween )
 
-        slice
-          .append("path")
-          .attr("class", "slice path path--background")
-          .attr("d", arc)
-          .style("fill",function(d) {
-            return xAttr.colorScale(d.data.key)
-          })
+        // console.log("path pre transitioning")
+        // console.log(path)
 
-
-
-        var t = d3.transition().duration(100);
-
-        slices = d3.select("#"+ "pie_" + xAttr.column)
-          .select("g")
-          .selectAll(".slice")
-          .data(pie(aggDF));
-
-        console.log(slices);
-
-        slices.exit().remove();
-        
-        // enter
-        enter = slices
+        path
           .enter()
-          .append("g")
-          .classed("slice", true)
-          .append("path");
-
-        slices = enter.merge(slices)
           .append("path")
-          .attr("class", "slice path path--background")
-          .attr("d", arc)
-          .style("fill",function(d) {
+          .each(function(d, i) {
+              // console.log("Applying findNeighborArc "+xAttr.column)
+              // console.log(d)
+              var narc = findNeighborArc(i, data0, data1,keyf) ;
+              // console.log(narc)
+              if(narc) {          
+                this._current = narc;
+                this._previous = narc;
+              } else {          
+                this._current = d;
+              }
+            }) 
+            .attr("fill", function(d,i) { 
             return xAttr.colorScale(d.data.key)
           })
-          .transition(t);
+            .transition()
+            .duration(myDuration)
+            .attrTween("d", arcTween);
+      
+          // console.log('this')
+          // console.log(this);
+
+
+          path
+            .exit()
+            .transition()
+            .duration(myDuration)
+            .attrTween("d", function(d, index) {
+              // console.log("previous data")
+              // console.log(this._previous)
+              var i = d3.interpolateObject(d,this._previous);
+              return function(t) {
+                return arc(i(t))
+              }
+            })
+            .remove()
+
+          // console.log("done")
 
       }// end update of pieChart
 
@@ -462,37 +560,59 @@
 
       // -------------------------------------------------------
       // Draw Tooltip
-      function drawTooltip(mapDF,div){
-        mapDF.forEach(function(e){
-          // text in tool tip (HTML)
-          var tooltip = "<b> Postcode: </b> " + e.key +"<br>" +
-          "<b> Sale Price: </b> $" +d3.format(",")(Math.round(e.value.sales,0))   +"<br>" +
-          "<b> Properties: </b>" +d3.format(",")(Math.round(e.value.volume,0))   +"<br>" ;
-          // 
-          // console.log();
-          // 
-          d3.select("#poa"+e.key)
-            // .attr("class", "postcode q"+quantile(Math.sqrt(+e.value.sales))+"-9")
-            .on("mouseover", function(d) { 
-              // tooltip type
-              div.transition()
-                .duration(200)
-                .style("opacity", 0.9);
-              div.html(tooltip)
-                .style("left",(d3.event.pageX + 30) + "px")
-                .style("top", (d3.event.pageY - 30) + "px");
-              // 
-              
-            })
-            .on("mouseout", function(d) { 
-              div.transition()
-                .duration(500)
-                .style("opacity", 0);
-              div.html("")
-                .style("left" , "0px")
-                .style("top", "0px")
-            });
-        }); // end loop through data 
+      function drawTooltip(mapDF,div,base_lvl){
+
+        d3.selectAll(".postcode")
+          .on("mouseover", function(d) {
+            e = mapDF.filter(f => f.key === d.properties.POA_CODE16); 
+            // console.log(e)
+            if (e.length === 0){
+              e = {key:d.properties.POA_CODE16,value:{sales: NaN, volume: 0}}
+            } else {
+              console.log(e);
+              // Update dashboard
+              targetDF = base_lvl.filter(f=>f.postcode ===d.properties.POA_CODE16 );
+              console.log("TARGET DF")
+              console.log(targetDF)
+              poa_lvl = summFunc(targetDF, "postcode");
+              console.log("OUTCOME")
+              console.log(poa_lvl)
+              attrCols.forEach(function(attr){
+                if (attr.class =="x"){
+                  updatePie(targetDF , attr, "#drivers2")
+                }
+              }); // end update dashbouard
+
+              e = e[0]
+            }
+            var tooltip = "<b> Postcode: </b> " + e.key +"<br>" +
+              "<b> Sale Price: </b> $" +d3.format(",")(Math.round(e.value.sales,0))   +"<br>" +
+              "<b> Properties: </b>" +d3.format(",")(Math.round(e.value.volume,0))   +"<br>" ;
+            // tooltip type
+            div.transition()
+              .duration(200)
+              .style("opacity", 0.9);
+            div.html(tooltip)
+              .style("left",(d3.event.pageX + 30) + "px")
+              .style("top", (d3.event.pageY - 30) + "px");
+            
+
+          })
+          .on("mouseout", function(d) { 
+            div.transition()
+              .duration(500)
+              .style("opacity", 0);
+            div.html("")
+              .style("left" , "0px")
+              .style("top", "0px");
+            //
+            // Update dashboard
+            attrCols.forEach(function(attr){
+              if (attr.class =="x"){
+                updatePie(base_lvl , attr, "#drivers2")
+              }
+            }); // end update dashbouard
+          });
       }; // end function "drawTooltip"
 
 
@@ -570,19 +690,30 @@
         var buckets = chroma.limits(nums, breakType, breakCount);
         // console.log(buckets);
 
-        data.forEach(function(e){
-          d3.select("#poa"+e.key)
-            .transition(t)
-			      .style("fill", function(d){
+        // poa_all.forEach(function(poa){
+        //   e = data.filter(d => d.key === poa.key ) ;
+        //   console.log(e);
+
+        // d3.select("#poa"+e.key)
+        d3.selectAll(".postcode")
+          .transition(t)
+          .style("fill", function(d){
+            // console.log(d);
+            e = data.filter(f => f.key === d.properties.POA_CODE16); 
+            // console.log(e)
+            if ( e.length === 1 && !isNaN(e[0]['value'][value])  ){
               var bucketNumber = d3.min(buckets.map(function(bucket, i){
-                if (e['value'][value] <= bucket){
+                if (e[0]['value'][value] <= bucket){
                   return i;
                 }
-              }));
-              // console.log(bucketNumber);
+              })); // end map
+              // console.log(colors[colorScheme][breakCount][bucketNumber - 1])
               return colors[colorScheme][breakCount][bucketNumber - 1];
-            });
-        });
+            } else {
+              return "#DCDCDC"
+            };
+          });
+        // };
             // .attr("class", "postcode q"+quantile(Math.sqrt(+e.value.sales))+"-9")
 
 			  // an array to return for drawing the legend

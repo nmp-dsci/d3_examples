@@ -66,7 +66,14 @@
           .attr("name", "fruit")
           .attr("value", function(d) { return d.key; })
           .on("change", change)
-          .filter(function(d, i) { return !i; })
+          // default 
+          .filter(function(d, i) {  
+            if (d.key == "Oranges"){
+              return true
+            } else {  
+              return false
+            }
+          })
           .each(change)
           .property("checked", true);
 
@@ -81,17 +88,27 @@
 
             path = path.data(data1, key);
 
-            path
+            console.log("data0")
+            console.log(data0);
+            console.log("data1")
+            console.log(data1);
+
+          path
             .transition()
             .duration(myDuration)
             .attrTween("d", arcTween)
 
+          console.log("path pre transitioning")
+          console.log(path)
 
-            path
+           path
             .enter()
             .append("path")
             .each(function(d, i) {
+              console.log("Applying findNeighborArc:")
+              console.log(d)
               var narc = findNeighborArc(i, data0, data1, key) ;
+              console.log(narc)
               if(narc) {          
                 this._current = narc;
                 this._previous = narc;
@@ -106,14 +123,19 @@
             .duration(myDuration)
             .attrTween("d", arcTween)
 
+          console.log('this')
+          console.log(this);
 
-            path
+          path
             .exit()
             .transition()
             .duration(myDuration)
             .attrTween("d", function(d, index) {
+              console.log("previous data")
+              console.log(this._previous)
               var currentIndex = this._previous.data.region;
               var i = d3.interpolateObject(d,this._previous);
+              console.log
               return function(t) {
                 return arc(i(t))
               }
