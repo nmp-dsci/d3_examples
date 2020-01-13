@@ -10,6 +10,7 @@
       <script src="../d3_examples/resources/d3.4.2.8.min.js" type="text/JavaScript"></script>
       <script src="../d3_examples/resources/jquery.3.2.1.min.js" type="text/JavaScript"></script>
       <script src="../d3_examples/resources/chromas.1.3.4.js" type="text/JavaScript"></script>
+      <script src="../d3_examples/resources/d3-legend.2.24.0.js" type="text/JavaScript"></script>      
 
       <script type="text/javascript" src="../d3_examples/js/color_map.json"></script>
       <!-- <script src="../d3_examples/resources/leaflet.1.6.0.js" type="text/JavaScript"></script> -->
@@ -212,16 +213,17 @@
                 poa_df.filter(f => f[d.column] != "")
                 , r => r[d.column]).keys().sort();
             xValuesRaw = xValues;
-            xValues.push(defaultX+" " + d.name);
-            // add drop down values
-            xValues.forEach(function(v) {
-      			  $("#attribute #"+d.column).append("<option value='"+d.name+"_" + v + "'>" + v + "</option>");
-            });
-            $("#attribute #"+d.column).val(d.name+"_"+defaultX+" " + d.name);
             // generate universal color mapping
             var colorScale = d3.scaleOrdinal(d3.schemeCategory10)
               .domain(xValuesRaw);
             attrCols[i]['colorScale'] = colorScale
+            // add drop down values
+            xValues.push(defaultX+" " + d.name);
+            xValues.forEach(function(v) {
+      			  $("#attribute #"+d.column).append("<option value='"+d.name+"_" + v + "'>" + v + "</option>");
+            });
+            $("#attribute #"+d.column).val(d.name+"_"+defaultX+" " + d.name);
+
           }; // end loop through filter for x 
         }); // end loop through column name
 
@@ -461,11 +463,22 @@
           .text(xAttr.name);
 
         var pie_area = pie_svg
-            .append("g")
-            .attr("transform", `translate(${pie_w/2},${pie_h/2})`)
-            .attr("id","pie_" + xAttr.column+"_g")
+          .append("g")
+          .attr("transform", `translate(${pie_w/2},${pie_h/2})`)
+          .attr("id","pie_" + xAttr.column+"_g")
 
-        var pie_legend
+        var pie_legend = pie_svg
+          .append("g")
+          .attr("transform", `translate(${pie_w*0.3},${pie_h})`)
+          .attr("id","pie_"+ xAttr.column+"_l");
+
+        const colorLegend = d3.legendColor()
+        .scale(xAttr.colorScale)
+        .shape('circle');
+
+        pie_legend.call(colorLegend)
+          .selectAll(".cell text")
+          .attr("dy", "0.1em");
 
       } // end innitPIE
 
