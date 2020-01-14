@@ -93,8 +93,8 @@
 
       // customisable features coming from dataset
       var attrCols = [
-        {class:"y", name:"Mean Sale Price",column:"sales"},
-        {class:"y", name:"Properties Sold",column:"volume"},
+        {class:"y", name:"Mean Sale Price",column:"sales",format:e=>d3.format(",")(Math.round(e.value.sales,0))},
+        {class:"y", name:"Properties Sold",column:"volume",format:e=>d3.format(",")(Math.round(e.value.volume,0))},
         {class:"x", name:"Year",column:"year"},
         {class:"x", name:"Property Type",column:"propertyType"},
         {class:"x", name:"Bedrooms",column:"beds"},
@@ -102,6 +102,19 @@
         {class:"x", name:"Parking",column:"parking"}
       ];
 
+      var geoField = "postcode";
+
+      function tooltipText(e) {
+        var tooltip = "<b> Postcode: </b> " + e.key +"<br>" ;
+        //
+        attrCols.forEach(function(d){
+          if (d.class == "y" ) {
+            tooltipLine = "<b> "+d.name+": </b>" +d3.format(",")(Math.round(e.value[d.column],0))   +"<br>" ;
+            tooltip = tooltip + tooltipLine;
+          }
+        });
+        return tooltip ;
+      }
       function summFunc(data, agg){
         var summDF = d3.nest()
           .key(d=>d[agg])
@@ -139,8 +152,6 @@
         .attr("width", width_b)
         .attr("height", height_b) 
         .attr("class","geom");
-
-
 
 
       // ----------------------------------------------------------------------
@@ -197,16 +208,6 @@
 
         if (error) throw error;
 
-        // master list of postcodes
-        var poa_all = d3.nest()
-          .key(function(d) {
-            return d.properties.POA_CODE16; 
-          })
-          .entries(map_json.features);
-        console.log('master list of postcodes') 
-        console.log(poa_all)
-
-
         // STEP 0: Draw "Attribute Filter Drop Down"
         var defaultX = "All";
         attrCols.forEach(function(d,i){
@@ -256,10 +257,11 @@
           // style("opacity", 0);
 
         // STEP 2: Generate heatmap data
-        poa_lvl = summFunc(poa_df, "postcode");
+        poa_lvl = summFunc(poa_df,geoField);
         
         //  Initialise Legend Scale and drawLegend AND CHANGE listener!!
         var buckets = colorSubUnits(poa_lvl, $("#response #breaks").val(), $("#response #count").val(), $("#response #colors").val(), $("#response #column").val());
+        
         drawLegend(buckets, $("#response #colors").val());
         drawTooltip(poa_lvl,div,poa_df);
 
@@ -301,7 +303,7 @@
             } // end IF through d.class
           });// end loop through Attributes
 
-          poa_lvl = summFunc(selectDF, "postcode");
+          poa_lvl = summFunc(selectDF, geoField);
           // Apply DAta
 			    buckets = colorSubUnits(poa_lvl, $("#response #breaks").val(), $("#response #count").val(), $("#response #colors").val(), $("#response #column").val());
           drawLegend(buckets, $("#response #colors").val());
@@ -491,10 +493,8 @@
 
         // update title
         poas = d3.nest()
-          .key(d=> d.postcode)
+          .key(d=> d[geoField])
           .entries(data); 
-        console.log("postcodes parsed")
-        console.log(poas.length)
         
         if (poas.length == 1){
           d3.select("#drivers2")
@@ -607,9 +607,9 @@
               console.log(e);
               e = e[0]
             }
-            var tooltip = "<b> Postcode: </b> " + e.key +"<br>" +
-              "<b> Sale Price: </b> $" +d3.format(",")(Math.round(e.value.sales,0))   +"<br>" +
-              "<b> Properties: </b>" +d3.format(",")(Math.round(e.value.volume,0))   +"<br>" ;
+
+            tooltip = tooltipText(e);
+
             // tooltip type
             div.transition()
               .duration(200)
@@ -627,7 +627,7 @@
               .style("left" , "0px")
               .style("top", "0px");
             //
-            // Update dashboard
+            // // Update dashboard
             // attrCols.forEach(function(attr){
             //   if (attr.class =="x"){
             //     updatePie(base_lvl , attr, "#drivers2")
@@ -636,10 +636,10 @@
           })
           .on("click",function(d){
             // Update dashboard
-            targetDF = base_lvl.filter(f=>f.postcode ===d.properties.POA_CODE16 );
+            targetDF = base_lvl.filter(f=>f[geoField] ===d.properties.POA_CODE16 );
             console.log("TARGET DF")
             console.log(targetDF)
-            poa_lvl = summFunc(targetDF, "postcode");
+            poa_lvl = summFunc(targetDF, geoField);
             console.log("OUTCOME")
             console.log(poa_lvl)
             attrCols.forEach(function(attr){
@@ -723,19 +723,12 @@
 
         var nums = data.filter(d => !isNaN(+d['value'][value])).map(d => +d['value'][value] );
         var buckets = chroma.limits(nums, breakType, breakCount);
-        // console.log(buckets);
-
-        // poa_all.forEach(function(poa){
-        //   e = data.filter(d => d.key === poa.key ) ;
-        //   console.log(e);
 
         // d3.select("#poa"+e.key)
         d3.selectAll(".postcode")
           .transition(t)
           .style("fill", function(d){
-            // console.log(d);
             e = data.filter(f => f.key === d.properties.POA_CODE16); 
-            // console.log(e)
             if ( e.length === 1 && !isNaN(e[0]['value'][value])  ){
               var bucketNumber = d3.min(buckets.map(function(bucket, i){
                 if (e[0]['value'][value] <= bucket){
