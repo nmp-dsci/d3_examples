@@ -66,11 +66,6 @@
 
       <div id="attribute">
         <h2>Attribute Filter</h2>
-        <select id="year"></select>
-        <select id="propertyType"></select>
-        <select id="beds"></select>
-        <select id="baths"></select>
-        <select id="parking"></select>
       </div>
 
       <div>
@@ -150,6 +145,15 @@
 
       // ----------------------------------------------------------------------
       //  SET THE DROP DOWNS
+      // 0. set the FILTER fields 
+      attrCols.forEach(function(d){
+        if (d.class == "x" ) {
+          d3.select("#attribute")
+            .append("select")
+            .attr("id",d.column)
+        }
+      });
+
       //  1. Respones you can use
       attrCols.forEach(function(d){
         if (d.class == "y" ) {
