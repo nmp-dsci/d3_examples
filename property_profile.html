@@ -488,6 +488,24 @@
 
       // -------------------------------------------------------
       function updatePie(data ,xAttr,divID){
+
+        // update title
+        poas = d3.nest()
+          .key(d=> d.postcode)
+          .entries(data); 
+        console.log("postcodes parsed")
+        console.log(poas.length)
+        
+        if (poas.length == 1){
+          d3.select("#drivers2")
+          .select("h2")
+          .text(`Postcode of focus: ${poas[0].key}`);
+        } else {
+          d3.select("#drivers2")
+          .select("h2")
+          .text("All Postcodes for Selection");
+        }
+
         // 
         aggDF = summFunc(data, xAttr.column);
         var total = d3.sum(aggDF, d => d.value.volume);
@@ -587,19 +605,6 @@
               e = {key:d.properties.POA_CODE16,value:{sales: NaN, volume: 0}}
             } else {
               console.log(e);
-              // Update dashboard
-              targetDF = base_lvl.filter(f=>f.postcode ===d.properties.POA_CODE16 );
-              console.log("TARGET DF")
-              console.log(targetDF)
-              poa_lvl = summFunc(targetDF, "postcode");
-              console.log("OUTCOME")
-              console.log(poa_lvl)
-              attrCols.forEach(function(attr){
-                if (attr.class =="x"){
-                  updatePie(targetDF , attr, "#drivers2")
-                }
-              }); // end update dashbouard
-
               e = e[0]
             }
             var tooltip = "<b> Postcode: </b> " + e.key +"<br>" +
@@ -613,7 +618,6 @@
               .style("left",(d3.event.pageX + 30) + "px")
               .style("top", (d3.event.pageY - 30) + "px");
             
-
           })
           .on("mouseout", function(d) { 
             div.transition()
@@ -624,9 +628,23 @@
               .style("top", "0px");
             //
             // Update dashboard
+            // attrCols.forEach(function(attr){
+            //   if (attr.class =="x"){
+            //     updatePie(base_lvl , attr, "#drivers2")
+            //   }
+            // }); // end update dashbouard
+          })
+          .on("click",function(d){
+            // Update dashboard
+            targetDF = base_lvl.filter(f=>f.postcode ===d.properties.POA_CODE16 );
+            console.log("TARGET DF")
+            console.log(targetDF)
+            poa_lvl = summFunc(targetDF, "postcode");
+            console.log("OUTCOME")
+            console.log(poa_lvl)
             attrCols.forEach(function(attr){
               if (attr.class =="x"){
-                updatePie(base_lvl , attr, "#drivers2")
+                updatePie(targetDF , attr, "#drivers2")
               }
             }); // end update dashbouard
           });
