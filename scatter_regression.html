@@ -1,1 +1,77 @@
 <!-- https://bl.ocks.org/jalapic/18b997f9b1025b21470d058b918421b9  -->
+
+<!doctype html>
+<html>
+  <head>
+      <title>Interactive Scatter</title>
+      <script src="../d3_examples/resources/d3.4.2.8.min.js" type="text/JavaScript"></script>
+      <style>
+      /* insert CSS */
+      body {
+          margin: 0 auto;
+          margin-top: 1em;
+          display: table;
+          font-family: "Helvetica Neue", sans-serif;
+      }
+      svg {
+          padding-bottom: 16px;
+      }
+      .regression {
+          stroke-width: 2px;
+          stroke: red;
+          stroke-dasharray: 10,5;
+      }
+      .equation { 
+          font-size: 12px;
+          margin-top: 5px;
+          text-align: center;
+      }
+      .axistext {
+          font-size: 14px;
+      }
+      #selector {
+          margin-left: 50px;
+      }
+    </style>
+  </head>
+  <body>
+    <div>
+        <select id="selector"></select>
+    </div>
+    <div class="chart"></div>
+    <div class="equation"></div>
+    <div class="equation"></div>
+    
+    <script>
+        // setup
+        var width_b=450, height_b=450;
+        var margin = {top:33,right:5,bottom:20,left:50},
+            width = width_b - margin.left - margin.right,
+            height = height_b - margin.top - margin.bottom;
+
+        var svg = d3.select(".chart")
+            .append("svg")
+            .attr("width",width_b)
+            .attr("height", height_b)
+            .append("g")
+            .attr("transform",`translate(${margin.left},${margin.top})`);
+        
+        var x = d3.scaleLinear().range([0,width]);
+        var y = d3.scaleLinear().range([height,0]);
+        var xAxis = d3.axisBottom().scale(x);
+        var yAxis = d3.axisLeft().scale(y);
+
+        // DATA
+        d3.json("scatter.json", function(error, data){
+
+
+            
+        })// end function for data
+
+
+
+
+
+    </script>
+  </body>
+</html>
