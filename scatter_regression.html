@@ -21,7 +21,12 @@
           stroke: red;
           stroke-dasharray: 10,5;
       }
-      .equation { 
+      #equation1 { 
+          font-size: 12px;
+          margin-top: 5px;
+          text-align: center;
+      }
+      #equation2 { 
           font-size: 12px;
           margin-top: 5px;
           text-align: center;
@@ -39,8 +44,12 @@
         <select id="selector"></select>
     </div>
     <div class="chart"></div>
-    <div class="equation"></div>
-    <div class="equation"></div>
+    <div id="equation1">
+        <p></p>
+    </div>
+    <div id="equation2">
+        <p></p>
+    </div>
     
     <script>
         // setup
@@ -62,15 +71,159 @@
         var yAxis = d3.axisLeft().scale(y);
 
         // DATA
-        d3.json("scatter.json", function(error, data){
+        d3.json("../d3_examples/data/scatter.json", function(error, data){
+            // aadd basic axes, all points and calculate scales
+            y.domain(d3.extent(data, d => d.y ));
+            x.domain(d3.extent(data, d => d.x ));
 
+            svg.append("g")
+                .attr("class", "x axis")
+                .attr("transform",`translate(0,${height})` )
+                .call(xAxis);
 
+            svg.append("g")
+                .attr("class", "y axis")
+                .call(yAxis);
+
+            svg.selectAll(".point")
+                .data(data)
+                .enter()
+                .append("circle")
+                .attr("class", "point")
+                .attr("r", 4)
+                .attr("cy", d => y(d.y))
+                .attr("cx", d => x(d.x));
+
+            // axis title variables 
+            var yaxistext = "Sepal width";
+            var xaxistext = "Sepal length";
+
+            // text label for the x axis 
+            svg.append("text")
+                .attr("class", "axistext")
+                .attr("transform",`translate(${width-margin.left},${height+margin.top})`)
+                .style("text-anchor", "middle") 
+                .text(xaxistext);
+
+            // text label for the y axis 
+            svg.append("text")
+                .attr("class" , "axistext")
+                .attr("transform", "rotate(-90)")
+                .attr("y", 0 - margin.left)
+                .attr("x", 0 - (height / 2))
+                .attr("dy", "1em")
+                .style("text-anchor", "middle")
+                .text(yaxistext);
+
+            // group/ filter by select 
+            var names = d3.nest()
+                .key(d => d.name)
+                .rollup( function(a) { return a.length})
+                .entries(data);
+
+            names.unshift({"key":"ALL", "value":d3.sum(names, d => d.value )});
+
+            // add dropdown options to selector
+            var selector = d3.select("#selector");
+            selector 
+                .selectAll("option")
+                .data(names)
+                .enter()
+                .append("option")
+                .text(d => d.key + ": " + d.value)
+                .attr("value",d => d.key);
+
+            // Calculate the r2, slope and trendline
+            var xSeries = data.map(e => e.x);
+            var ySeries = data.map(e => e.y);
+
+            var rsq = leastSquares(xSeries, ySeries);
+            drawFit(xSeries,ySeries,rsq) ;
+
+            // dynamically alter when drop down menu changes
+            selector.on("change", function(){
+
+                d3.selectAll("line.regression").remove(); // remove pre-existing lines
+
+                // change points
+                d3.selectAll(".point")
+                    .attr("opacity", 1) ;
+                var value = selector.property("value");
+
+                if (value != "ALL") {
+                    d3.selectAll(".point")
+                        .filter( d => d.name != value)
+                        .attr("opacity", 0.1);
+                    filteredData = data.filter(d => d.name == value);
+                } else {
+                    filteredData = data;
+                }
+
+                var xSeries = filteredData.map( e => e.x );
+                var ySeries = filteredData.map( e => e.y);
+
+                var rsq = leastSquares(xSeries, ySeries);
+                drawFit(xSeries,ySeries,rsq) ;
+
+            }) // end ON CHANGE
             
         })// end function for data
 
+        // round 
 
+        // calculate LM 
+        function leastSquares(xSeries, ySeries){
 
+            var reduceSumFunc = function(prev, cur) { return prev + cur ; };
+            // averages
+            var xBar = d3.sum(xSeries) * 1.0 / xSeries.length;
+            var yBar = d3.sum(ySeries) * 1.0 / ySeries.length;
+            //  y - 
+            var ssXX = d3.sum(xSeries.map(d => Math.pow(d - xBar, 2)));
+            var ssYY = d3.sum(ySeries.map(d => Math.pow(d - yBar, 2)));
 
+            var ssXY = d3.sum(xSeries.map(function(d,i) { 
+                return (d-xBar) * (ySeries[i] - yBar);
+            }));
+
+            var slope = ssXY / ssXX;
+            var intercept = yBar - (xBar * slope);
+            var rSquare = Math.pow(ssXY,2) / (ssXX * ssYY); 
+
+            return {x1: slope, x0:intercept, r2:rSquare};
+
+        }
+
+        function drawFit(xSeries,ySeries,rsq) { 
+
+            // first equation 
+            d3.select("#equation1")
+                .select("p")
+                .text(`y = ${d3.format("0.2f")(rsq.x1)}x + ${d3.format("0.2f")(rsq.x0)}`);
+
+            // second equation 
+            d3.select("#equation2")
+                .select("p")
+                .text(`R-square: ${d3.format("0.2f")(rsq.r2)}`)
+
+            // draw prediction
+            xRange = d3.extent(xSeries)
+            xStep = (xRange[1]-xRange[0])/ 1000;
+            xScore = d3.range(xRange[0],xRange[1],xStep);
+
+            // add trendline
+            yPred = xScore.map(function(d,i){
+                return rsq.x0 + rsq.x1 * d
+            });
+
+            svg
+                .append("line")
+                .attr("class", "regression")
+                .attr("x1", x(xScore[0])) 
+                .attr("y1", y(yPred[0]))
+                .attr("x2", x(xScore[xScore.length-1]))
+                .attr("y2", y(yPred[yPred.length-1]));
+        }
 
     </script>
   </body>
