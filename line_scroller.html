@@ -1,0 +1,89 @@
+<!-- https://bl.ocks.org/tophtucker/170914f8196c4c0238d7ef1031eff129 -->
+
+<!doctype html>
+<html>
+  <head>
+      <script src="../d3_examples/resources/d3.4.2.8.min.js" type="text/JavaScript"></script>
+      <style>
+      /* insert CSS */
+      * {
+          box-sizing: border-box;
+      }
+      html, body { 
+        width: 100%;
+        height: 100%;
+        margin: 0;
+        overflow: hidden;
+        font-family: helvetica, sans-serif;
+      }
+      .table-wrapper {
+          position: relative;
+          height: 100%;
+          padding-top: 20px;
+      }
+      .table-scroll {
+          height: 100%;
+          overflow: scroll;
+      }
+      table {
+          margin-right:0;
+          margin-left: auto;
+      }
+      thead {
+          background: white;
+      }
+      th > div {
+          position: absolute;
+          width: 4em;
+          text-align: left;
+          background: white;
+          padding: 3px;
+          top: 0;
+      }
+      td { 
+          padding: 3px;
+          width: 4em;
+      }
+      td:last-child,
+      th:last-child > div {
+          text-align: right;
+      }
+      svg { 
+          position: absolute;
+          top:0;
+          left: 0;
+          width: calc(100% - 8.5em);
+          height: 100%;
+          pointer-events: none;
+      }
+      path { 
+          fill: none;
+          stroke-width: 1;
+          stroke: black;
+      }
+    </style>
+  </head>
+  <body>
+      <div class="table-wrapper">
+          <div class="table-scroll">
+              <table>
+                  <thread>
+                    <th><div>Ticker</div></th>
+                    <th><div>Return</div></th>
+                </thread>
+                <tbody></tbody>
+              </table>
+          </div>
+      </div>
+
+      <svg></svg>
+    </body>
+
+
+    <script type="text/javascript">
+    </script>
+    
+</html>
+
+
+
