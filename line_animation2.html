@@ -1,1 +1,56 @@
 <!-- https://bl.ocks.org/rpgove/ecee35052e3e81126dcefff134c06dae -->
+
+<!doctype html>
+<html>
+  <head>
+      <script src="../d3_examples/resources/d3.4.2.8.min.js" type="text/JavaScript"></script>
+      <style>
+      /* insert CSS */
+      svg {
+          overflow: visible;
+      }
+      text.runtime { 
+          text-anchor: middle;
+          font-family: sans-serif;
+          font-weight: bold;
+          fill: #888;
+          font-size:72px;
+      }
+      .links line {
+          stroke: #999;
+          stroke-opacity: 0.6;
+      }
+      .nodes circle { 
+          stroke: #fff;
+          stroke-width: 1.5px;
+      }
+    </style>
+  </head>
+  <body>
+      <svg id="d3-force" width="400" height="400"></svg>
+      <svg id="d3-force-reuse" width="400" height="400"></svg>
+      
+    <script>
+        var svg = d3.select("#d3-force").attr("transform","scale(0.75)"),
+            width = +svg.attr("width"),
+            heigth = +svg.attr("height");
+        
+        var svgReus = d3.select("#d3-force-reuse").attr("transform","scale(0.75)");
+
+        var runtime = svg.append("text")
+            .attr("class", "runtime")
+            .attr("x", width/2)
+            .attr("y", height/ 4);
+
+        var runtimeReuse = svgReuse.append("text")
+            .attr("class", "runtime")
+            .attr("x", width/2)
+            .attr("y", height/ 4);
+
+        var dispatch = d3.dispatch('tickend');
+
+
+
+    </script>
+  </body>
+</html>

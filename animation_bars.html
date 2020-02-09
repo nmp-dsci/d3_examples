@@ -1,1 +1,58 @@
 <!-- https://bl.ocks.org/elangobharathi/2ce6556f9b4fa6e1744159eea373cf26 -->
+
+<!doctype html>
+<html>
+  <head>
+      <script src="../d3_examples/resources/d3.4.2.8.min.js" type="text/JavaScript"></script>
+      <style>
+      /* insert CSS */
+    </style>
+  </head>
+  <body>
+    <script>
+        var margin = {left: 40, right: 40, top: 40, bottom: 40};
+        var width = 800 - margin.left - margin.right;
+        var height = 400 - margin.top - margin.bottom;
+
+        var svg = d3.select("body").append("svg")
+            .attr("width", width)
+            .attr("height", height)
+
+        var data = [
+            [20, 40, 80, 100, 80, 70, 25],
+            [20, 30, 40],
+            [100, 90, 10, 20]
+        ];
+
+        var colorScale = d3.scaleOrdinal(d3.schemeCategory10);
+        
+        function updateBars(data) { 
+            var rectWidth = 40;
+            var rects = svg.selectAll("rect").data(data);
+
+            rects.exit().remove();
+
+            var enter = rects.enter()
+                .append("rect")
+                .attr("width", rectWidth)
+                .attr("stroke", "white");
+
+            rects = enter.merge(rects)
+                .attr("x", function(d,i){ return (i * rectWidth ) + margin.left })
+                .attr("y", d => (height - d))
+                .attr("height", d => d)
+                .attr("fill", d => colorScale(d))
+                .on("click", d => console.log(d))
+        } // end 'updateBars'
+
+        var index = 0;
+
+        setInterval(function() {
+            updateBars(data[index % 3]);
+            index ++ ;
+        }, 2000);
+
+
+    </script>
+  </body>
+</html>

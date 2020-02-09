@@ -1,0 +1,54 @@
+<!-- https://bl.ocks.org/Thanaporn-sk/fde3eca5d17e111840765c50fb837640 -->
+
+<!doctype html>
+<html>
+    <head>
+        <script src="../d3_examples/resources/d3.4.2.8.min.js" type="text/JavaScript"></script>
+        <style>
+            /* insert CSS */
+            html {
+                font-family: "HelveticaNeue-Light", "Helvetica Neue Light", "Helvetica Neue", Helvetica, Arial, "Lucida Grande", sans-serif;
+            }
+            .button {
+                position: absolute;
+                bottom: 10px;
+                padding: 10px 20px;
+                font-size: 2em;
+                text-align: center;
+                background: #fff;
+                border-radius: 5px;
+                border: 1px solid #DDD;
+            }
+            .button:hover {
+                background: #CCC;
+                cursor: pointer;
+            }
+            #locations {
+                right: 10px;
+            }
+            #systems { 
+                right: 10px;
+                bottom: 75px;
+            }
+        </style>
+    </head>
+    <body>
+        <button id="locations" class="button">Locations</button>
+        <button id="systems" class="button">Locations</button>
+        <script>
+            d3.json('data.json')
+                .then(function(data) { 
+                    data = data.filter( d => d.System != "");
+                    
+                    var locations = [...new Set(data.map)]
+
+
+
+
+
+                })
+        </script>
+    </body>
+</html>
+
+
