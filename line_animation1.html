@@ -57,7 +57,7 @@
           .key(d => d.LOCATION )
           .entries(data);
 
-        console.log(dataByYear);
+        console.log(dataByCountry);
 
         // ----------------------------------------------------
         // AXis/ Scales
@@ -94,7 +94,7 @@
         // 
         function update(data) { 
 
-          console.log(data) ;
+          // console.log(data) ;
           // update1 : circles
           var circles = svg.selectAll('circle') 
             .data(data ) ;
@@ -125,7 +125,7 @@
             .attr("dy", 3)
             .merge(labels)
             .attr("transform", function(d) { 
-              console.log(`translate(${xScale(+d[xCol])},${yScale(+d[yCol])})`)
+              // console.log(`translate(${xScale(+d[xCol])},${yScale(+d[yCol])})`)
               return `translate(${xScale(+d[xCol])},${yScale(+d[yCol])})`
             } )
 
@@ -143,8 +143,8 @@
             .attr("fill", "none")
             .merge(countryPaths)
             .attr("d", function(d){
-              console.log('path values')
-              console.log(d.values)
+              // console.log('path values')
+              // console.log(d.values)
               return path(d.values);
             }  );
 

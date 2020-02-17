@@ -26,7 +26,7 @@
         .attr("transform", "translate("+margin.left + "," + margin.top+")" );
 
       // apply dataset 
-      d3.csv("../data/people.csv", function(data) {
+      d3.csv("../d3_examples/data/people.csv", function(data) {
 
         // list of groups (here I have one group per column)
         var allGroup = d3.map(data, function(d) {return(d.name )}).keys()
