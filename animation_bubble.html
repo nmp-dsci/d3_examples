@@ -1,1 +1,221 @@
 <!-- https://bl.ocks.org/jrzief/19eb75bdaeee2e10c10636f4b7a0a93f -->
+
+<!doctype html>
+<html>
+  <head>
+    <script src="../d3_examples/resources/d3.4.2.8.min.js" type="text/JavaScript"></script>
+    <script src="../d3_examples/resources/jquery.3.2.1.min.js" type="text/JavaScript"></script>
+    <script src="../d3_examples/resources/bootstrap.3.3.5.min.js" type="text/JavaScript"></script>
+    <link rel="stylesheet" href="../d3_examples/resources/bootstrap.3.3.5.min.css">
+      
+      <style>
+      /* insert CSS */
+        #chart-area svg { 
+            margin-left: auto; 
+            margin-right: auto;
+            display: block;
+        }
+        #reset-button, #play-button { 
+            float: left; 
+            margin-right: 10px;
+        }
+        #reset-button, #play-button { 
+            margin-top: 5px; 
+            margin-bottom: 10px;
+        }
+    </style>
+  </head>
+  <body>
+    <div class="Container">
+        <div class="row pt-6">
+            <div class="col-md-6">
+                <button id="play-button" class="btn btn-primary">Play</button>
+                <buttom id="reset-button" class="btn btn-primary">Reset</button>
+            </div>
+        </div>
+        <div class="row">
+            <div class="col-md-12">
+                <div id="chart-area"></div>
+            </div>
+        </div>
+    </div>
+
+    <script type="text/javascript">
+        var margin = {left: 80, right: 20, top: 50, bottom: 100};
+        var height = 600 - margin.top - margin.bottom, 
+            width = 900 - margin.left - margin.right;
+
+        var g = d3.select("#chart-area")
+            .append("svg")
+            .attr("width", width + margin.left + margin.right)
+            .attr("height", height + margin.top + margin.bottom)
+            .append("g")
+            .attr("transform", `translate(${margin.left},${margin.top})`);
+
+        var time = 0;
+        var interval;
+        var formattedData;
+
+        // labels
+        var xLabel = g.append("text")
+            .attr("y", height + 50)
+            .attr("x", width / 2) 
+            .attr("font-size", "20px")
+            .attr("text-anchor", "middle")
+            .text("GDP Per Capita ($) "); 
+
+        var yLabel = g.append("text")
+            .attr("transform", "rotate(-90)")
+            .attr("y", -40)
+            .attr("x", -170)
+            .attr("font-size", "20px")
+            .attr("text-anchor", "middle")
+            .text("Life Expectancy (years) ");
+        
+        var timeLabel = g.append("text") 
+            .attr("y", height - 10)
+            .attr("x", width - 40 ) 
+            .attr("font-size", "40px") 
+            .attr("opacity", "0.4") 
+            .attr("text-anchor", "middle")
+            .text("1800")
+
+        // scales
+        var x = d3.scaleLog()
+            .base(10)
+            .domain([142, 150000])
+            .range([0,width]) ;
+
+        var y = d3.scaleLinear() 
+            .domain([0,90]) 
+            .range([height, 0]);
+
+        var area = d3.scaleLinear() 
+            .range([25 * Math.PI, 1500 * Math.PI ])
+            .domain([2000, 1400000000]);
+
+        // X axis 
+        var xAxisCall = d3.axisBottom(x) 
+            .tickValues([400, 4000, 40000])
+            .tickFormat(d3.format("$"));
+
+        g.append("g")
+            .attr("class", "x axis")
+            .attr("transform", `translate(0, ${height} )` )
+            .call(xAxisCall);
+
+        // Y axis
+        var yAxisCall = d3.axisLeft(y).tickFormat(d => + d);
+
+        g.append("g")
+            .attr("class", "y axis")
+            .call(yAxisCall);
+        var continentColor = d3.scaleOrdinal(d3.schemeCategory20);
+
+        // building the legend 
+        var continents = ["europe", "asia", "americas", "africa"];
+
+        var legend = g.append("g")
+            .attr("transform", `translate(${width - 10}, ${height - 125})`); 
+
+        continents.forEach(function(continent, i){ 
+            var legendRow = legend.append("g")
+                .attr("transform", `translate(0, ${i*20})` ); 
+
+            legendRow.append("rect")
+                .attr("width", 10)
+                .attr("height", 10)
+                .attr("fill", continentColor(continent) ); 
+
+            legendRow.append("text")
+                .attr("x", -10 )
+                .attr("y", 10)
+                .attr("text-anchor", "end")
+                .style("text-transform", "capitalize")
+                .text(continent);
+            
+        }); // end function for continents loop
+
+        // Get the DATA
+        d3.json("../d3_examples/data/countries.json", function(data){ 
+            console.log(data);
+
+            // clean data 
+            formattedData = data.map(function(year){ 
+                return year["countries"].filter( function(country){
+                    var dataExists = (country.income && country.life_exp);
+                    return dataExists
+                }).map(function(country){
+                    country.income = +country.income; 
+                    country.life_exp = +country.life_exp; 
+                    return country; 
+                })
+            });
+
+            // first run of the visualisation
+            update(formattedData[0]);
+        }); 
+
+        $("#play-button")
+            .on("click", function() { 
+                var button = $(this);
+                if (button.text() == "Play") { 
+                    button.text("Pause");
+                    interval = setInterval(step, 100);
+                } else{ 
+                    button.text("Play");
+                    clearInterval(interval);
+                }
+            }); 
+
+        $("#reset-button")
+            .on("click", function(){
+                time = 0;
+                update(formattedData[0]);
+            });
+
+        function step(){
+            // at the end of our data , loop back
+            time = (time < 167 ) ? time+ 1 : 0;
+            update(formattedData[time]);
+        }
+
+        function update(data){
+            var t = d3.transition().duration(100);
+
+            // JOIN new data with old eleents;
+            var circles = g.selectAll("circle")
+                .data(data, d =>  d.country );
+                
+            // EXIT old elements not present in new data 
+            circles.exit() 
+                .attr("class", "exit")
+                .remove() ;
+
+            // ENTER new elements present in new data 
+            var enter = circles.enter() 
+                .append("circle")
+                // .filter( year => year === "1800" )
+                .attr("class", "enter") 
+                .attr("fill", d => continentColor(d.continent)  )
+                .merge(circles) 
+                .transition(t) 
+                    .attr("cy", d => y(d.life_exp)) 
+                    .attr("cx", d => x(d.income)) 
+                    .attr("r", d => Math.sqrt(area(d.population) / Math.PI ));
+
+            // Update the time label 
+            timeLabel.text(+(time + 1850));
+
+
+        }
+
+
+
+
+    </script>
+  </body>
+</html>
+
+
+

@@ -1,1 +1,140 @@
 <!-- https://bl.ocks.org/HarryStevens/de1069536e00256d7aa82299fac0f3d5 -->
+
+<!doctype html>
+<html>
+  <head>
+    <script src="../d3_examples/resources/d3.4.2.8.min.js" type="text/JavaScript"></script>
+    <script src="../d3_examples/resources/jeezy.1.13.0.js" type="text/JavaScript"></script>
+    <script src="../d3_examples/resources/d3-marcon.2.0.2.min.js" type="text/JavaScript"></script>
+    <style>
+      /* insert CSS */
+      body {
+          margin: 0;
+          font-family: "Helvetica Neue", sans-serif; 
+      }
+      .amount {
+          fill: #fff;
+          text-anchor: middle;
+      }
+      .x.axis .domain {
+          display: none;
+      }
+    </style>
+  </head>
+  <body>
+
+    <script type="text/javascript">
+        var alpha = "abcdefg".split("");
+
+        var setup = d3.marcon()
+            .top(20)
+            .bottom(20)
+            .left(10)
+            .right(10)
+            .width(window.innerWidth)
+            .height(window.innerHeight);
+
+        setup.render();
+
+        var width = setup.innerWidth(), height = setup.innerHeight(), svg = setup.svg();
+
+        var x = d3.scaleBand()
+            .rangeRound([0,width])
+            .domain(alpha)
+            .padding(.2);
+
+        var y = d3.scaleLinear()
+            .range([height, 0])
+            .domain([0,10]);
+
+        var x_axis = d3.axisBottom(x);
+
+        var y_axis = d3.axisRight(y).tickSize(width);
+
+        svg.append("g")
+            .attr("class", "x axis")
+            .attr("transform", `translate(0,${height})`)
+            .call(x_axis);
+
+        svg.append("g")
+            .attr("class","y axis")
+            .call(x_axis);
+
+        svg.append("g")
+            .attr("class", "y axis")
+            .call(customYAxis);
+
+        var color = d3.scaleOrdinal(["#66c2a5","#fc8d62","#8da0cb","#e78ac3","#a6d854","#ffd92f","#e5c494"]);
+
+        redraw(random_data());
+
+        d3.interval(function(){
+            redraw(random_data());
+        }, 1000);
+
+        function redraw(data){
+            var x_var = Object.keys(data[0])[0], y_var = Object.keys(data[0])[1];
+
+            y_axis.tickFormat(function(d,i,ticks){
+                return i == ticks.length - 1 ? d + " " + y_var + "s" : d; 
+            });
+
+            d3.select(".y.axis").call(customYAxis);
+
+            // Join
+            var bar = svg.selectAll(".bar").data(data , d => d[x_var]);
+            var amount = svg.selectAll(".amount").data(data, d => d[x_var]);
+
+            // update 
+            bar.transition()
+                .attr("y", d => y(d[y_var]))
+                .attr("height", d => height - y(d[y_var] ));
+
+            amount
+                .transition()
+                .attr("y", d => y(d[y_var] ) )
+                .text( d => d[y_var]) ;
+
+            // enter
+            bar.enter().append("rect")
+                .attr("class", "bar")
+                .attr("x", d => x(d[x_var ]))
+                .attr("y", d => y(d[y_var ]))
+                .attr("width", x.bandwidth() )
+                .attr("height", d => height - y(d[y_var ]) )
+                .attr("fill", d => color(d[x_var] ));
+
+            amount.enter().append("text")
+                .attr("class", "amount")
+                .attr("x", d => x(d[x_var]) + x.bandwidth() /2 )
+                .attr("y", d => y(d[y_var] ))
+                .attr("dy", 16)
+                .text( d => d[y_var]);
+        }
+
+        function random_data() { 
+            return alpha.map( function(d) { 
+                return { 
+                    name: d,
+                    value: jz.num.randBetween(1,10)
+                }
+            })
+        }
+
+        function customYAxis(g) { 
+            g.call(y_axis);
+            g.select(".domain").remove() ;
+            g.selectAll(".tick:not(:first-of-type) line")
+                .attr("stroke", "#777")
+                .attr("stroke-dasharray", "2,2");
+            g.selectAll(".tick text").attr("x", 4).attr("dy", -4);
+        }
+
+
+    </script>
+  </body>
+</html>
+
+
+
+
