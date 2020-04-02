@@ -1,1 +1,92 @@
 <!-- https://bl.ocks.org/denjn5/c27756b9fdadfa1a6490578331596906 -->
+
+
+<!doctype html>
+<html>
+  <head>
+      <script src="../d3_examples/resources/d3.4.2.8.min.js" type="text/JavaScript"></script>
+      <style>
+      /* insert CSS */
+      rect.main {
+          stroke: #05668D;
+          fill: white;
+          stroke-width: 2px;
+      }
+      rect.second {
+          fill: white;
+          opacity: 0;
+      }
+      path {
+          fill: none;
+          stroke: #05668D;
+          stroke-width: 2px;
+      }
+      text {
+          font-family: "Comic Sans MS", Verdana, "Helvetica Neue", Arial, Helvetica, Geneva, sans-serif;
+          font-size: 12px; 
+          fill: black;
+      }
+    </style>
+  </head>
+  <body>
+    <button id="phase">Next</button>
+    <svg>
+        <g></g>
+    </svg>
+
+    <script type="text/javascript">
+
+        var vWidth = 350 ;
+        var vHeight = 600; 
+        var vRad = 25;
+        var vColor = ["#feff9c","#7afcff", "#ff7eb9"];
+        var vRects;
+        var vLines;
+        var vPhase = 1;
+
+        // prepare our physical space 
+        var g = d3.select("svg")
+            .attr("width", vWidth)
+            .attr("height", vHeight)
+            .select("g")
+            .attr("transform", `translate(40,20)`);
+        
+        // Declare d3 layout 
+        var vLayout = d3.tree().size([vHeight *0.9, vWidth * 0.7 ]);
+
+        // Get the dat from our JSON file
+        d3.csv('../d3_examples/data/cars.csv', function(error, vCsvData){
+            if (error) throw error;
+            vCsvData = vCsvData.filter( node => node.round === "1" );
+            vData = d3.stratify()(vCsvData);
+            drawTree(vData);
+        });// end d3.csv
+
+        // ** draw out sunburst: time: 0 
+        // @param {object} data - Hierachical data 
+
+        function drawTree(data){
+            // layout + data 
+            var vRoot = d3.hierarchy(data);
+            var vNodes = vRoot.descendants();
+            var vLinks = vLayout(vRoot).links();
+
+        // Draw on screen
+        vLines = g.selectAll('path').data(vLinks).enter().append('path')
+            .attr('d', d3.linkHorizontal()
+                .x(function(d) { return d.y; })
+                .y(function(d) { return d.x; }));
+
+
+
+
+
+        }
+
+
+
+
+
+    </script>
+  </body>
+</html>

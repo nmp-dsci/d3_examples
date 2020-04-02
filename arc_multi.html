@@ -1,1 +1,245 @@
 <!-- https://bl.ocks.org/christianbriggs/f6d0b25123b7d94198a3355f66d2cb3e -->
+
+<!doctype html>
+<html>
+  <head>
+      <script src="../d3_examples/resources/d3.4.2.8.min.js" type="text/JavaScript"></script>
+      <style>
+      /* insert CSS */
+      .arc path {
+          stroke: #fff;
+      }
+      #arcsChart {
+          height: 500px;
+          width: 500px;
+          position: relative;
+      }
+      #arcsInfo {
+          position: absolute;
+          top: 50%;
+          left: 50%;
+          transform: translate(-50%, -50%);
+          color: #666;
+          font-size: 20px;
+          z-index: 2;
+          text-align: center;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="arcsChart">
+        <div id="arcsInfo">
+            <span style="font-size: 12px">move mouse over colored arcs!</span>
+        </div>
+    </div>
+
+    <script type="text/javascript">
+        var numberWithCommas = function(d){
+            if (d === undefined) return "undefined";
+            else return d.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+        };
+
+        var scoreColor = function(score) {
+            var color = 'silver';
+            switch (score) {
+                case "1.0":
+                    color = "green";
+                    break;
+                case "0.8":
+                    color = "orange";
+                    break;
+                case "0.6":
+                    color = "gold";
+                    break;
+                case "0.0":
+                    color = "grey";
+                    break;
+                default: 
+                    color = "silver";
+            }
+            return color;
+        };
+
+        d3.csv("../d3_examples/data/test-data.csv", function(error, data){
+            if (error) throw error;
+
+            // first column, "score", looks like a number , but in this use case its treated as an ordina
+            // second column, "tests", is a pipe-separated string where different test have binary pass/fail
+            // third column, "count", is intended to be the count of samples with this combination of scores and tests results
+
+            data.forEach(function(el, idx) {
+                data[idx].count = +data[idx].count;
+            });
+
+            // oddly, there are entries in this data with the same score and test by different counts.
+            // normally one would fi the problem at the point wher ethe data is created.
+            var nested = d3.nest()
+                .key( function(d) {return [d.score, d.test ]})
+                .entries(data);
+
+            // what is wanted is the original '.score'/'.test' and a new count
+            var data2 = nested.map(function(el){
+                return {
+                    score: el.values[0].score, 
+                    tests: el.values[0].tests,
+                    count: d3.sum(el.values, function(d) { return d.count; })
+                }
+            });
+
+            // the goal is to draw something wich starts off like a pie chart
+            // where each slice is one of the ordinal "score" values.
+            // within each slice, concentric arcs are to represent the proportion
+            // of that score where the idfferent "tests" were passed. 
+
+            var arcsData = [];
+            data2.forEach(function(el){
+                // is this score already in the slices?
+                var scoreIdx = arcsData
+                    .map(function(slice) {return slice.score})
+                    .indexOf(el.score);
+
+                if (scoreIdx === -1 ){
+                    // Not there? add a zero value
+                    scoreIdx = arcsData.push({
+                            score: el.score, 
+                            total: 0, 
+                            tests: []
+                        }) -1 ;
+                }
+
+                // Update the slice / score total
+                arcsData[scoreIdx].total += el.count;
+
+                // add the test. We'll want the slices to have entries for every test
+                // eventhose where none passed
+                ['Pr','Ca','Ha','Li','Ch'].forEach(function(test){
+                    var testIdx = arcsData[scoreIdx].tests
+                        .map(function(t) {return t.test; })
+                        .indexOf(test);
+                    if (testIdx === -1 ){ 
+                        testIdx = arcsData[scoreIdx].tests.push({
+                            test: test, 
+                            total: 0}) - 1;
+                    }
+                    if (el.tests.indexOf(test+'1') != -1 ){
+                        arcsData[scoreIdx].tests[testIdx].total += el.count;
+                    }
+                })
+            });
+
+            // start up some d3 
+            var width = parseInt(getComputedStyle(
+                document.querySelector("#arcsChart")).getPropertyValue("width"));
+            
+            var radius = width / 2; 
+            var svg = d3.select("#arcsChart")
+                .append("svg")
+                .attr("width", width)
+                .attr("height", width )
+                .append("g")
+                .attr("transform",`translate(${width/2},${width/2})`);
+
+            var info = d3.select("#arcsInfo");
+
+            // expects to be give a slice of the data
+            // it will give us the startAngle for each slice
+            var slice = d3.pie()
+                .sort(null)
+                .value(d => d.total);
+
+            var testInnerRadii = {
+                'Pr': radius - 100,
+                'Ca': radius - 80,
+                'Ha': radius - 60,
+                'Li': radius - 40,
+                'Ch': radius - 20
+            };
+
+            // Build our concentric arcs 
+            var concentricArcs = d3.merge(
+                // first run our data through 'slice' to get the startAngle and endAngle 
+                slice(arcsData).map(function(slice) {
+                    // a scale to give an engAngle for the arc, which is ranged over slice's angles.
+                    // by this time, the 'arcsData' has been through the 'slice' function so 
+                    // the underlying data is within the '.data' object
+                    var sliceArcScale = d3.scaleLinear()
+                        .range([slice.startAngle, slice.endAngle])
+                        .domain([0, slice.data.total ]);
+
+                    // when the data for the 'd3.arc()' generator has attributes for startAngle
+                    // endAngle
+                    return slice.data.tests.map(function(test){
+                        var innerRadius = testInnerRadii[test.test];
+                        var endAngle = sliceArcScale(test.total);
+                        return {
+                            startAngle: slice.startAngle, 
+                            endAngle: endAngle, 
+                            padAngle: 0,
+                            innerRadius: innerRadius, 
+                            outerRadius: innerRadius + 16, 
+                            arcName: test.test, 
+                            sliceName: slice.data.score, 
+                            sliceTotal: slice.data.total, 
+                            sliceEndAngle: slice.endAngle, 
+                            total: test.total, 
+                            fill: scoreColor(slice.data.score)};
+                    })
+                })
+            );
+
+            // the difference for the background arcs is that they all share the slices/ endAngle
+            var concentricBackgrounds = concentricArcs.map(function(arc){
+                var shallowCopy = Object.assign({}, arc);
+                shallowCopy.endAngle = shallowCopy.sliceEndAngle; 
+                return shallowCopy;
+            });
+
+
+        // A rough-n-ready way of showing what arc is what.
+        function mouseOver(d) {
+            info.html('<p>score: ' + d.sliceName + '<br/>'
+                    + numberWithCommas(d.sliceTotal)
+                    + ' (' + (100. * d.sliceTotal / d3.sum(arcsData, function(s) {
+                return s.total;})).toFixed(2) + '%)'
+                    + '<br/>' + numberWithCommas(d.total)
+                    + ' (' + (100. * d.total / d.sliceTotal).toFixed(2)
+                    + '% of ' + d.sliceName + ')<br>test: ' + d.arcName + '</p>');
+        }
+
+        function mouseOut(d) { info.html(''); }
+
+        // This works as our concentricArcs and concentricBackgrounds (above) generated objects with
+        // the required attributes of startAngle, endAngle, innerRadius, outerRadius.
+        var arc = d3.arc();
+
+        // Build background arcs using the concentricBackgrounds data.
+        var background = svg.selectAll('.arc-backgrounds')
+                .data(concentricBackgrounds)
+            .enter()
+                .append("path")
+                .style("fill", "#f3f3f3")  // pale grey
+                .on("mouseover", mouseOver)
+                .on("mouseout", mouseOut)
+                .attr("d", arc);
+
+        // Build the tests arcs using the conentricArcs data.
+        var testArcs = svg.selectAll(".arc")
+                .data(concentricArcs)
+            .enter().append("g")
+                .attr("class", "arc")
+                .on("mouseover", mouseOver)
+                .on("mouseout", mouseOut)
+                .append("path")
+                .attr("d", arc)
+                .style("fill", function (d) { return d.fill; });
+
+
+
+
+        })
+
+
+
+    </script>
+  </body>
+</html>
