@@ -1,1 +1,225 @@
 <!-- https://bl.ocks.org/tomshanley/dd93d10cc2959f72b2bc3858bf486075 -->
+
+<!doctype html>
+<html>
+  <head>
+    <script src="../d3_examples/resources/d3.4.2.8.min.js" type="text/JavaScript"></script>
+    <script src="../d3_examples/resources/d3-scale-chromatic.v1.min.js" type="text/JavaScript"></script>
+    <style>
+      /* insert CSS */
+      body {
+          font-family: sans-serif;
+          margin: 0;
+          top: 0;
+          right: 0;
+          bottom: 0;
+          left: 0;
+      }
+      rect, line {
+          shape-rendering: crispEdges
+      }
+    </style>
+  </head>
+  <body>
+      <h2> Horizon bar chart </h2>
+
+      <div id="horizon-controls">
+          <p>choose number of bands: 
+              <select id="bands-select">
+                <option value="1">1</option>
+                <option value="2">2</option>
+                <option value="3">3</option>
+                <option value="4">4</option>
+                <option value="5">5</option>
+                <option value="10">10</option>
+            </select>
+          </p>
+
+          <input name="mode" type="radio" value="mirror" id="horizon-mode-mirror" checked>
+            <label for="horizon-mode-mirror">Mirror</label>
+          <input name="mode" type="radio" value="offset" id="horizon-mode-offset"><label for="horizon-mode-offset">Offset</label>
+      </div>
+
+      <div id="horizon"></div>
+
+    <script type="text/javascript">
+        const maxY =100;
+        const minY = -(maxY);
+
+        // defaults
+        var numberOfBands = 4; 
+        var bandWidth = maxY / numberOfBands ;
+        // let mode = "mirror"; // or offset
+        let mode = "offset";
+
+        const height = 80;
+        const width = 800;
+        const margin = {"top": 10, "bottom": 10, "left":50, "right": 10 , };
+
+        const xScale = d3.scaleLinear().range([0,width]);
+        let colour = d3.scaleSequential(d3.interpolateRdYlGn).domain([minY,maxY]);
+        var bandsSelect = d3.select("#bands-select");
+        bandsSelect.property("value", numberOfBands);
+
+        var modeSelect = d3.selectAll("#horizon-controls inputs[name=mode]");
+
+        d3.csv("../d3_examples/data/series-value.csv", convertTextToNumbers, function(error, data){
+
+            if (error) {throw error ; };
+
+            modeSelect.on("change", function() {
+                mode = this.value;
+                console.log(mode)
+                drawHorizon(data);
+                drawLegend();
+            });
+
+            bandsSelect.on("change", function(d) { 
+                var selectedBand = d3.select("select").property("value");
+                numberOfBands = +selectedBand;
+                bandWidth = maxY/numberOfBands;
+                drawHorizon(data);
+                drawLegend();
+            });
+
+            drawHorizon(data);
+            drawLegend();
+        });
+
+        function convertTextToNumbers(d){
+            d.value = +d.value
+            return d;
+        }
+
+        function drawHorizon(data){
+
+            d3.selectAll("svg").remove();
+
+            let yScale = d3.scaleLinear()
+                .domain([0,bandWidth])
+                .range([height, 0]);
+
+            var nestedBySeries = d3.nest() 
+                .key(function(d) { return d.series })
+                .entries(data);
+
+            nestedBySeries.forEach(function(series){
+
+                let seriesData = series.values;
+                let barWidth = width / seriesData.length - 1;
+                xScale.domain([0, seriesData.length]);
+
+                let svg = d3.select("#horizon")
+                    .append("svg")
+                    .attr("width", width + margin.left + margin.right )
+                    .attr("height", height + margin.top + margin.bottom);
+
+                let g = svg.append("g")
+                    .attr("transform", `translate(${margin.left},${margin.top})`)
+
+                let bars = g.selectAll(".bars")
+                    .data(seriesData)
+                    .enter() 
+                    .append("g")
+                    .attr("transform", function(d,i){
+                        return `translate(${xScale(i)},0)`
+                    });
+
+                let backgroundBars = bars.append("rect")
+                    .attr("width", barWidth) 
+                    .attr("height", height) 
+                    .style("fill", function(d) { 
+                        return Math.abs(d.value) < bandWidth ? "white" : colour(band(d.value, bandWidth));
+                    });
+
+                let foregroundBars = bars.append("rect")
+                    .attr("y", function(d) {
+                        if (mode == "offset" && d.value < 0){
+                            return yScale(bandWidth) 
+                        } else { 
+                            let thisHeight = barHeight(d.value, bandWidth);
+                            return yScale(thisHeight);
+                        }
+                    })
+                    .attr("width", barWidth)
+                    .attr("height", function(d){
+                        let thisHeight = barHeight(d.value, bandWidth);
+                        return height - yScale(thisHeight);
+                    })
+                    .style("fill", function(d) { 
+                        let thisBand = d.value > 0 
+                            ? band(d.value, bandWidth) + bandWidth 
+                            : band(d.value, bandWidth) - bandWidth 
+                        return colour (thisBand);
+                    });
+                });
+            }
+
+        function drawLegend(){
+
+            let legendWidth = 25; 
+            let numberOfLegendItems = numberOfBands * 2;
+            let legendHeight = legendWidth * numberOfLegendItems;
+            const legendMargin = {"top":10,"bottom":10,"left":25,"right":150};
+
+            let legend = d3.select("body").append("svg") 
+                .attr("width", legendWidth + legendMargin.left + legendMargin.right)
+                .attr("height", legendMargin.top + legendHeight + legendMargin.bottom)
+                .append("g") 
+                .attr("transform", `translate(${legendMargin.left}, ${legendMargin.top})`);
+
+            let legendData = [];
+            let i = 0;
+
+            for (i; i < numberOfLegendItems; i++){
+                let datum = minY + (i * bandWidth) + bandWidth;
+                legendData.push(datum) 
+            };
+
+            let legendItems = legend.selectAll("g") 
+                .data(legendData)
+                .enter() 
+                .append("g")
+                .attr("transform", function(d,i){
+                    return `translate(0, ${i*legendWidth})`
+                });
+
+            legendItems.append("rect") 
+                .attr("width" , legendWidth) 
+                .attr("height", legendWidth) 
+                .style("fill", function(d) { 
+                    return d <= 0 
+                        ? colour(d - bandWidth) 
+                        : colour(d) ;
+                })
+                .style("stroke", "white") ;
+
+            legendItems.append("text") 
+                .text(function(d){ 
+                    return round(d - bandWidth) + " to " + round(d) ;
+                })
+                .attr("x", legendWidth + 5) 
+                .attr("y", legendWidth/2 + 5) 
+        }
+
+        function band(n, bandWidth) {
+            let band = n > 0 
+                ? Math.floor(n / bandWidth ) * bandWidth 
+                : Math.ceil(n / bandWidth) * bandWidth ;
+            return band;
+        };
+
+        function barHeight(n, bandWidth) { 
+            let absoluteN = Math.abs(n) 
+            return absoluteN - band(absoluteN, bandWidth);
+        };
+
+        function round(n) { 
+            return Math.round(n * 10)/ 10;
+        };
+
+
+
+    </script>
+  </body>
+</html>
