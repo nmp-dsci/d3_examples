@@ -1,7 +1,7 @@
 <!doctype html>
 <html>
   <head>
-      <script src="../resources/d3.4.2.8.min.js" type="text/JavaScript"></script>
+      <script src="../d3_examples/resources/d3.4.2.8.min.js" type="text/JavaScript"></script>
       <style>
       /* insert CSS */
       .title {
@@ -29,7 +29,7 @@
 
       var colorScale = d3.scaleOrdinal(d3.schemeCategory10);
 
-      d3.tsv("../data/barley.tsv", ready);
+      d3.tsv("../d3_examples/data/barley.tsv", ready);
 
       function ready(error, data){
         if (error) return consol.warn(error);
