@@ -8,9 +8,12 @@ import requests
 
 ### Get address 
 
-with open("locations_raw_repco.txt") as fn : 
+fni = "servicing"
+
+with open(f"locations_raw_{fni}.txt") as fn : 
     ldf = fn.read()
-    ldf = json.loads(ldf)
+
+ldf = json.loads(ldf)
 
 # check for duplicates
 # pd.DataFrame(ldf).name.value_counts() 
@@ -36,6 +39,6 @@ for store in ldf:
 
 
 
-with open('locations_geo_repco.json','w')  as out:
+with open(f'locations_geo_{fni}.json','w')  as out:
     out.write(json.dumps(output_geo))
 
