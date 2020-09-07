@@ -5,18 +5,22 @@ import os
 
 pd.options.display.max_columns = 100
 
+# Ran from d3 examples
 poa_df = pd.read_csv('poa_2_mesh.csv')
 sa_df = pd.read_csv('SA_2_mesh.csv')
 
 ### 
 
-sa_df.query("STATE_NAME_2016 == 'New South Wales'").nunique(axis=0)
+# sa_df.query("STATE_NAME_2016 == 'New South Wales'").nunique(axis=0)
 
 ## 
 master_df = poa_df.merge(sa_df.drop(['AREA_ALBERS_SQKM'],axis=1),on=["MB_CODE_2016"], how='outer')
 
-## filter for NSW
+## check all suburbs exist
 master_df.STATE_NAME_2016.value_counts()
+
+master_df.isnull().sum(axis=0)
+
 # master_df = master_df.query("STATE_NAME_2016=='New South Wales'")
 
 ## check coverage
