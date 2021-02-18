@@ -59,14 +59,66 @@ for idx,sr in enumerate(reader.shapeRecords()):
 
 
 
-# # write the GeoJSON file
-# geojson = open(f"{fn}.geojson", "w")
-# geojson.write(json.dumps({"type": "FeatureCollection", "features": buffer}) )
-# geojson.close()
+##############################
+## Get the centroids 
 
-# write GeoJSON reducted
-geojson = open(f"{fn}.geojson", "w")
-geojson.write(json.dumps({"type": "FeatureCollection", "features": buffer_r}) )
-geojson.close()
+centroid_df = []
+for poa in buffer_r: 
+    postcode = poa['properties']['POA_CODE16']
+    geom_set = poa['geometry']['coordinates'][0]
+    if len(geom_set) < 4 :
+        geom_set = geom_set[0]
+    centroid = pd.DataFrame(geom_set).mean(axis=0)
+    if len(centroid) == 2:
+        centroid_df +=[{'postcode':postcode,'long':centroid[0],'lat':centroid[1]}]
+    else : 
+        print('error')
+        break
+
+centroid_df = pd.DataFrame(centroid_df)
+centroid_df['dummy'] = 1 
+
+# centroid_df.query('postcode in ["2450","2000"]')
+
+
+distance_df = centroid_df.merge(centroid_df,on='dummy')
+
+distance_df = distance_df.query('postcode_x <= postcode_y')
+
+# original: 7,118,224, 3,560,446
+# spot check
+distance_df.query('postcode_x=="2126" and postcode_y =="2076"')
+distance_df.query('postcode_x=="2076" and postcode_y =="2126"')
+
+
+def get_distance(rowid):
+    # approximate radius of earth in km
+    R = 6373.0
+    lat1 = radians(rowid.lat_x)
+    lon1 = radians(rowid.long_x)
+    lat2 = radians(rowid.lat_y)
+    lon2 = radians(rowid.long_y)
+    #
+    dlon = lon2 - lon1
+    dlat = lat2 - lat1
+    #
+    a = sin(dlat / 2)**2 + cos(lat1) * cos(lat2) * sin(dlon / 2)**2
+    c = 2 * atan2(sqrt(a), sqrt(1 - a))
+    #
+    distance = R * c
+    return distance
+
+
+distance_df['distance'] = distance_df.apply(lambda x:get_distance(x) ,axis=1) 
+
+# Centroids
+centroid_df.to_csv("postcode_centroids.csv")
+
+# Distance metrics
+dropCols =['long_x','lat_x','dummy','long_y','lat_y']
+distance_df = distance_df.drop(dropCols,axis=1)
+
+distance_df.to_csv("postcode_distances.csv")
+
 
 

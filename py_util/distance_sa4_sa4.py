@@ -9,34 +9,20 @@ import json
 import os ,re 
 import pandas as pd 
 import numpy as np
-import matplotlib.pyplot as plt
-from math import sin, cos, sqrt, atan2, radians
 
 
 # read the shapefile
-fn = "POA_2016_AUST"
-
-reader = shapefile.Reader(f"{fn}.shp")
+reader = shapefile.Reader("1270055001_sa4_2016_aust_shape/SA4_2016_AUST.shp")
 feature = reader.shapeRecords()[0]
 fields = reader.fields[1:]
 fields_df = pd.DataFrame(fields,columns=['name','format','length','unknown'])
 
-# simplied from 'mapshaper'
-reader_simp = shapefile.Reader(f"POA_2016_AUST_simple/{fn}.shp")
-#  = shapefile.Reader(f"{fn}.shp")
+# simplied
+reader_simp = shapefile.Reader("SA4_2016_AUST_simplified/SA4_2016_AUST.shp")
 
-# with shapefile.Reader(f"POA_2016_AUST_simple/{fn}.shp") as shp:
-#     print(shp)
 
-# #########
-# print("shape types available") 
-# print(shp.shapeType)
-# print(shp.shapeTypeName)
-# #  Should be 5 = "POLYGON"
-# 
-# print(f'Shapefile Length: {len(shp)}')
-# print(f'bounding box: {shp.bbox}')
 
+# reduce_lvl =3 -0.0001   # shrink coordinates by how much? 
 
 buffer,buffer_r = [],[]
 for idx,sr in enumerate(reader.shapeRecords()):
@@ -48,8 +34,8 @@ for idx,sr in enumerate(reader.shapeRecords()):
         continue
     atr = dict(zip(fields_df.name, sr.record))
     print(atr)
-    # if atr.get("STE_NAME16") not in ["Australian Capital Territory",'New South Wales'] :
-    #     continue
+    if atr.get("STE_NAME16") not in ["Australian Capital Territory",'New South Wales'] :
+        continue
     # full version
     geom = sr.shape.__geo_interface__    
     buffer.append(dict(type="Feature", geometry=geom, properties=atr)) 
@@ -59,13 +45,13 @@ for idx,sr in enumerate(reader.shapeRecords()):
 
 
 
-# # write the GeoJSON file
-# geojson = open(f"{fn}.geojson", "w")
-# geojson.write(json.dumps({"type": "FeatureCollection", "features": buffer}) )
-# geojson.close()
+# write the GeoJSON file
+geojson = open("SA4_2016_NSW.geojson", "w")
+geojson.write(json.dumps({"type": "FeatureCollection", "features": buffer}) )
+geojson.close()
 
 # write GeoJSON reducted
-geojson = open(f"{fn}.geojson", "w")
+geojson = open("SA4_2016_NSW_reduced.geojson", "w")
 geojson.write(json.dumps({"type": "FeatureCollection", "features": buffer_r}) )
 geojson.close()
 
