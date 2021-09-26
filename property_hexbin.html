@@ -39,8 +39,8 @@
 
   <!-- Content Wrapper -->
   <div id="content-wrapper" class="d-flex flex-column">
-    <h1>Leaflet Map</h1>
-    <svg id='clegend' width='1400' height='40'></svg>
+    <h1>Average Sale Price</h1>
+    <svg id='clegend' width='1400' height='80'></svg>
     <div id="map" style="width: 1400px; height: 800px">
     </div>
   </div>  <!-- END tabcontent -->
@@ -50,6 +50,7 @@
   <!-- Leaflet javascript -->
   <script src="https://d3js.org/d3.v7.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/d3-legend/2.25.6/d3-legend.min.js"></script>
+  <script src="https://d3js.org/d3-hexbin.v0.2.min.js"></script>
 
 
   <!-- Web app  -->
@@ -69,7 +70,7 @@
   // View data 
 
   const suburb_df  = JSON.parse(suburb_json); 
-  const map_json = JSON.parse(map_json_r); 
+  // const map_json = JSON.parse(map_json_r); 
   const postcode_df  = JSON.parse(postcode_json); 
 
   // pins
@@ -88,73 +89,27 @@
     })
 
 
-  colorScale = d3.scaleSequential(d3.interpolateSinebow).domain(d3.extent(postcode_df.map(r=>r['mean'])))
+  // hexbin boins
+    var options = {
+      radius : 12,
+      opacity: 0.5,
+      duration: 500
+  };
 
-  // ################
-  // drawScale (ref: http://using-d3js.com/04_05_sequential_scales.html)
-  function drawScale(id,cScale) {
-    var legendRange = Array.from(Array(100).keys());
+  var hexLayer = L.hexbinLayer(options).addTo(map);
+  hexLayer.colorScale().range(['white', 'blue']);
 
-    var lScale = d3.scaleLinear()
-      .domain([0,99])
-      .range(cScale.domain());
+  hexLayer
+    .radiusRange([6, 11])
+    .lng(function(d) { return d['latitude']; })
+    .lat(function(d) { return d['longitude']; })
+    .colorValue(function(d) { return d.length; })
+    .radiusValue(function(d) { return d.length; });
 
-    var xScale = d3.scaleLinear()
-        .domain(cScale.domain())
-        .range([0, 1400]);   // min/max pixels for legend
-
-    var u = d3.select("#" + id)
-        .selectAll("rect")
-        .data(legendRange)
-        .enter()
-        .append("rect")
-        .attr("x", (d) => Math.floor(xScale(lScale(d))))
-        .attr("y", 0)
-        .attr("height", 40)
-        .attr("width", (d) => {
-            if (d == 99) {
-                return 6;
-            }
-            return Math.floor(xScale(lScale(d+1))) - Math.floor(xScale(lScale(d))) + 1;
-         })
-        .attr("fill", (d) => cScale(lScale(d)));
-  }
-
-  drawScale( "clegend",colorScale)
-
-  // ##############################################
-  //  Style of each polygon
-  function geoStyle(feature){
-    //  Pull throught metric to color code
-    postcode_metric = postcode_df.filter(f=> Number(f['postcode']) === Number(feature.properties['POA_CODE16']))
-    if (postcode_metric.length === 0) {
-      postcode_metric = 0
-    } else { 
-      postcode_metric = postcode_metric[0]['mean']
-    }
-    return {
-      weight: 2,
-			opacity: 0.9 ,
-			color: 'white',
-			dashArray: '3',
-			fillOpacity: 0.4,
-			fillColor: colorScale(postcode_metric)
-    }
-  }
-
-
-  geojson = L.geoJson(map_json,{
-    style:geoStyle
-  });
-  geojson.eachLayer(layer => {
-    layer.bindPopup(layer.feature.properties.POA_NAME16)
-  })
-  
-  geojson.addTo(map)
 
 
   //  controls
-  L.control.layers({'Open Street Map':map_layer}, {'Properties':pins,'Postcodes':geojson}).addTo(map);
+  L.control.layers({'Open Street Map':map_layer}, {'Properties':pins}).addTo(map);
 
 
   </script>
