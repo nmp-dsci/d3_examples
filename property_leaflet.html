@@ -88,9 +88,11 @@
     })
 
 
-  colorScale = d3.scaleSequential(d3.interpolateSinebow).domain(d3.extent(postcode_df.map(r=>r['mean'])))
 
   // ################
+
+  colorScale = d3.scaleSequential(d3.interpolateSinebow).domain(d3.extent(postcode_df.map(r=>r['mean'])))
+
   // drawScale (ref: http://using-d3js.com/04_05_sequential_scales.html)
   function drawScale(id,cScale) {
     var legendRange = Array.from(Array(100).keys());
