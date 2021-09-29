@@ -44,6 +44,12 @@ print(prop_df.isnull().sum(axis=0))
 prop_df['sold_n'] = 1
 prop_df = prop_df.rename(columns={'sale_price':'price_n_v','sold_n':'sold_n_v'})
 
+pins_df = prop_df.query('propertyType=="house"')[['longitude','latitude','price_n_v']]
+pins_df = pins_df.rename(columns={'longitude':'lng','latitude':'lat'})
+
+pins_json = pins_df.to_dict(orient='records')
+with open('data/pins_df.json','w') as fct:
+    fct.write("{id} = '{json}'".format(id='pins_json',json=json.dumps(pins_json)))
 
 
 ######################################

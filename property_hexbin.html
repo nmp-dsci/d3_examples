@@ -9,7 +9,7 @@
   <meta name="description" content="">
   <meta name="author" content="">
 
-  <title>Map Demo 1.0</title>
+  <title>Hexbin Map</title>
 
   <!-- Leaflet -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css"
@@ -27,7 +27,7 @@
   <!-- ancillary data -->
   <!-- <script type="text/javascript" src="data/SA4_2016_NSW_reduced.geojson"></script>  -->
   <script type="text/javascript" src="data/POA_2016_NSW_reduced.geojson"></script> 
-  <script type="text/javascript" src="data/suburb_df.json"></script>
+  <script type="text/javascript" src="data/pins_df.json"></script>
   <script type="text/javascript" src="data/postcode_df.json"></script>
 
 
@@ -51,7 +51,7 @@
   <script src="https://d3js.org/d3.v7.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/d3-legend/2.25.6/d3-legend.min.js"></script>
   <script src="https://d3js.org/d3-hexbin.v0.2.min.js"></script>
-
+  <script src="https://unpkg.com/@asymmetrik/leaflet-d3@4/dist/leaflet-d3.js" charset="utf-8"></script>
 
   <!-- Web app  -->
   <script>
@@ -76,30 +76,23 @@
   // ###########################################
   // View data 
 
-  const suburb_df  = JSON.parse(suburb_json); 
+  const pins_df  = JSON.parse(pins_json); 
   // const map_json = JSON.parse(map_json_r); 
   const postcode_df  = JSON.parse(postcode_json); 
 
-  // pins
-  var pins = L.layerGroup();
-  suburb_df.forEach(row =>{
-    L.marker([row['latitude'], row['longitude']]
-      ).bindPopup(`Street: "${row['street']} Date: ${row.dateID} Price: ${d3.format('$.3s')(row.price_n_v)}`
-      ).addTo(pins);
-  })
-  
+
   // map
   var map = L.map('map',{
-      center: [d3.median(suburb_df.map(r=>r['latitude'])), d3.median(suburb_df.map(r=>r['longitude']))] , 
-      zoom: 15, 
-      layers:[map_layer, pins]
+      center: [d3.median(pins_df.map(r=>r['lat'])), d3.median(pins_df.map(r=>r['lng']))] , 
+      zoom: 10, 
+      layers:[map_layer]
     })
 
 
   // hexbin boins
     var options = {
-      radius : 12,
-      opacity: 0.5,
+      radius : 20,
+      opacity: 1,
       duration: 500
   };
 
@@ -107,16 +100,17 @@
   hexLayer.colorScale().range(['white', 'blue']);
 
   hexLayer
-    .radiusRange([6, 11])
-    .lng(function(d) { return d['latitude']; })
-    .lat(function(d) { return d['longitude']; })
-    .colorValue(function(d) { return d.length; })
+    .radiusRange([20, 20])
+    .lng(function(d) { return d['lng']; })
+    .lat(function(d) { return d['lat']; })
+    .colorValue(function(d) { 
+        return d3.mean(d.map(r=>r['o']['price_n_v'])) })
     .radiusValue(function(d) { return d.length; });
 
-
+  hexLayer.data(pins_df);
 
   //  controls
-  L.control.layers({'Open Street Map':map_layer}, {'Properties':pins}).addTo(map);
+  // L.control.layers({'Open Street Map':map_layer}, {'Properties':pins}).addTo(map);
 
 
   </script>
